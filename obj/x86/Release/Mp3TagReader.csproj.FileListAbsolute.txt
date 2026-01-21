@@ -1,0 +1,150 @@
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.exe.config
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Interop.WMPLib.dll
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.ResolveComReference.cache
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.exe
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.pdb
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.XmlSerializers.dll
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\folderList.txt
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.exe
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.XmlSerializers.dll
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.pdb
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.ArtworkViewer.resources
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.MainForm.resources
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.FullInfo.resources
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.LyricsViewer.resources
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Properties.Resources.resources
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Searcher.resources
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.GenerateResource.Cache
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\folderList.txt
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.exe.config
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.exe
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.XmlSerializers.dll
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.pdb
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Interop.WMPLib.dll
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.ResolveComReference.cache
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.ArtworkViewer.resources
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.MainForm.resources
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.FullInfo.resources
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.LyricsViewer.resources
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Properties.Resources.resources
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Searcher.resources
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.GenerateResource.Cache
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.exe
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.pdb
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.XmlSerializers.dll
+E:\Personal\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csprojResolveAssemblyReference.cache
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\folderList.txt
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.exe.config
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.exe
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.XmlSerializers.dll
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\bin\Release\Mp3TagReader.pdb
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csprojResolveAssemblyReference.cache
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Interop.WMPLib.dll
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.ResolveComReference.cache
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.ArtworkViewer.resources
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.MainForm.resources
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.FullInfo.resources
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.LyricsViewer.resources
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Properties.Resources.resources
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Searcher.resources
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.GenerateResource.Cache
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.exe
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.pdb
+C:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.XmlSerializers.dll
+E:\Dropbox\Backups\VS2010 Projects\mp3tagreader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csprojResolveAssemblyReference.cache
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.exe.config
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Interop.WMPLib.dll
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.ResolveComReference.cache
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.exe
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.pdb
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.XmlSerializers.dll
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\folderList.txt
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.exe
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.XmlSerializers.dll
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.pdb
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csprojResolveAssemblyReference.cache
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.ArtworkViewer.resources
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.MainForm.resources
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.FullInfo.resources
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.LyricsViewer.resources
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Properties.Resources.resources
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Searcher.resources
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.GenerateResource.Cache
+F:\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.CoreCompileInputs.cache
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\folderList.txt
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.exe.config
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.exe
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.XmlSerializers.dll
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.pdb
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csprojResolveAssemblyReference.cache
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Interop.WMPLib.dll
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.ResolveComReference.cache
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.ArtworkViewer.resources
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.MainForm.resources
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.FullInfo.resources
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.LyricsViewer.resources
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Properties.Resources.resources
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Searcher.resources
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.GenerateResource.Cache
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.CoreCompileInputs.cache
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.exe
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.pdb
+E:\Google Drive\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.XmlSerializers.dll
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csprojResolveAssemblyReference.cache
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Interop.WMPLib.dll
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.ResolveComReference.cache
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.ArtworkViewer.resources
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.MainForm.resources
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.FullInfo.resources
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.LyricsViewer.resources
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Properties.Resources.resources
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Searcher.resources
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.GenerateResource.Cache
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.CoreCompileInputs.cache
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.exe
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.pdb
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.XmlSerializers.dll
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\folderList.txt
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.exe.config
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.exe
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.XmlSerializers.dll
+E:\MEGA\Code Backups\VS2010 Projects\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.pdb
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\bin\Release\folderList.txt
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.exe.config
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.exe
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.XmlSerializers.dll
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.pdb
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.AssemblyReference.cache
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.SuggestedBindingRedirects.cache
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Interop.WMPLib.dll
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.ResolveComReference.cache
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.ArtworkViewer.resources
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.MainForm.resources
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.FullInfo.resources
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.LyricsViewer.resources
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Properties.Resources.resources
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Searcher.resources
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.GenerateResource.cache
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.CoreCompileInputs.cache
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.CopyComplete
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.exe
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.pdb
+C:\Users\lunar\Desktop\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.XmlSerializers.dll
+D:\Portables\mp3-tag-reader\Mp3TagReader\bin\Release\folderList.txt
+D:\Portables\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.exe.config
+D:\Portables\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.exe
+D:\Portables\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.XmlSerializers.dll
+D:\Portables\mp3-tag-reader\Mp3TagReader\bin\Release\Mp3TagReader.pdb
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Interop.WMPLib.dll
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.ResolveComReference.cache
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.ArtworkViewer.resources
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.MainForm.resources
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.FullInfo.resources
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.LyricsViewer.resources
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Properties.Resources.resources
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.Searcher.resources
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csproj.GenerateResource.cache
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.exe
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.pdb
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.XmlSerializers.dll
+D:\Portables\mp3-tag-reader\Mp3TagReader\obj\x86\Release\Mp3TagReader.csprojResolveAssemblyReference.cache
