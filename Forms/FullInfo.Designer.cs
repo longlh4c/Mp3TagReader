@@ -1,4 +1,4 @@
-﻿namespace Mp3TagReader
+namespace Mp3TagReader.Forms
 {
     partial class FullInfo
     {

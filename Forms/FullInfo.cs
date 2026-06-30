@@ -1,7 +1,9 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
 
-namespace Mp3TagReader
+using Mp3TagReader.Helpers;
+
+namespace Mp3TagReader.Forms
 {
     public partial class FullInfo : Form
     {

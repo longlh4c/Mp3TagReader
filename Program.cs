@@ -1,5 +1,6 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
+using Mp3TagReader.Forms;
 
 namespace Mp3TagReader
 {

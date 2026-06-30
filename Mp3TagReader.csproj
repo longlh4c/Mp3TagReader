@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="12.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -71,18 +71,18 @@
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
     <Reference Include="taglib-sharp">
-      <HintPath>.\taglib-sharp.dll</HintPath>
+      <HintPath>Libs\taglib-sharp.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Library\AddToContext.cs" />
+    <Compile Include="Helpers\AddToContext.cs" />
     <Compile Include="Forms\ArtworkViewer.cs">
       <SubType>Form</SubType>
     </Compile>
     <Compile Include="Forms\ArtworkViewer.Designer.cs">
       <DependentUpon>ArtworkViewer.cs</DependentUpon>
     </Compile>
-    <Compile Include="Library\FileExplorer.cs" />
+    <Compile Include="Services\FileExplorer.cs" />
     <Compile Include="Forms\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -101,9 +101,15 @@
     <Compile Include="Forms\LyricsViewer.Designer.cs">
       <DependentUpon>LyricsViewer.cs</DependentUpon>
     </Compile>
-    <Compile Include="Library\Manipulator.cs" />
-    <Compile Include="Library\Mp3Info.cs" />
-    <Compile Include="Library\MySortableBindingList.cs" />
+    <Compile Include="Forms\Mp3ConvertForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\Mp3ConvertForm.Designer.cs">
+      <DependentUpon>Mp3ConvertForm.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Helpers\Manipulator.cs" />
+    <Compile Include="Models\Mp3Info.cs" />
+    <Compile Include="Helpers\MySortableBindingList.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Web References\com.wikia.lyrics\Reference.cs">
@@ -197,6 +203,9 @@
     <None Include="Resources\Stop.png" />
     <None Include="Resources\Resume.png" />
     <Content Include="folderList.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+    <Content Include="Libs\ffmpeg.exe">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
     <Content Include="Resources\tag.ico" />

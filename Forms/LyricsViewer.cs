@@ -1,7 +1,7 @@
-﻿using System;
+using System;
 using System.Windows.Forms;
 
-namespace Mp3TagReader
+namespace Mp3TagReader.Forms
 {
     public partial class LyricsViewer : Form
     {

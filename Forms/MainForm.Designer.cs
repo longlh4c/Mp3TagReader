@@ -1,4 +1,4 @@
-﻿namespace Mp3TagReader
+namespace Mp3TagReader.Forms
 {
     partial class MainForm
     {
@@ -99,6 +99,7 @@
             this.removeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.removeAllToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.renameToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.convertToMp3ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.progressBar = new System.Windows.Forms.ProgressBar();
             this.labelTimerSong = new System.Windows.Forms.Label();
             this._btnOpenFolder = new System.Windows.Forms.Button();
@@ -697,9 +698,10 @@
             this.toolStripMenuItem3,
             this.removeToolStripMenuItem,
             this.removeAllToolStripMenuItem,
-            this.renameToolStripMenuItem});
+            this.renameToolStripMenuItem,
+            this.convertToMp3ToolStripMenuItem});
             this.contextGrid.Name = "contextMenuFolder";
-            this.contextGrid.Size = new System.Drawing.Size(206, 114);
+            this.contextGrid.Size = new System.Drawing.Size(206, 136);
             // 
             // toolStripMenuItem1
             // 
@@ -735,6 +737,13 @@
             this.renameToolStripMenuItem.Size = new System.Drawing.Size(205, 22);
             this.renameToolStripMenuItem.Text = "Rename";
             this.renameToolStripMenuItem.Click += new System.EventHandler(this.renameToolStripMenuItem_Click);
+            // 
+            // convertToMp3ToolStripMenuItem
+            // 
+            this.convertToMp3ToolStripMenuItem.Name = "convertToMp3ToolStripMenuItem";
+            this.convertToMp3ToolStripMenuItem.Size = new System.Drawing.Size(205, 22);
+            this.convertToMp3ToolStripMenuItem.Text = "Convert to MP3";
+            this.convertToMp3ToolStripMenuItem.Click += new System.EventHandler(this.convertToMp3ToolStripMenuItem_Click);
             // 
             // progressBar
             // 
@@ -1026,6 +1035,7 @@
         private System.Windows.Forms.Button btnReloadList;
         private System.Windows.Forms.Label lblSelectedFilePath;
         private System.Windows.Forms.CheckBox _chkAllFiles;
+        private System.Windows.Forms.ToolStripMenuItem convertToMp3ToolStripMenuItem;
     }
 }
 
