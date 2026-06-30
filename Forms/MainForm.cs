@@ -57,6 +57,17 @@ namespace Mp3TagReader.Forms
         public MainForm()
         {
             InitializeComponent();
+            this.FormClosing += MainForm_FormClosing;
+        }
+
+        private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
+        {
+            try
+            {
+                windowsMediaPlayer.controls.stop();
+                windowsMediaPlayer.close();
+            }
+            catch { }
         }
 
         private void MainForm_Load(object sender, EventArgs e)
@@ -800,14 +811,31 @@ namespace Mp3TagReader.Forms
                 foreach (FileInfo fi in allFiles)
                 {
                     audio = TagLib.File.Create(fi.FullName, ReadStyle.None);
+                    if (audio.Tag == null)
+                    {
+                        listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
+                        continue;
+                    }
+
+                    bool isUntagged = false;
+
                     if (audio.Tag.Album != null)
                     {
-                        if (audio.Tag.Album.ToLower().Contains("zing") || audio.Tag.Album.ToLower().Contains(".com") || audio.Tag.Album.ToLower().Contains(".vn") || audio.Tag.Album.ToLower().Contains(".org"))
+                        string albumLower = audio.Tag.Album.ToLower();
+                        if (albumLower.Contains("zing") || albumLower.Contains(".com") || albumLower.Contains(".vn") || albumLower.Contains(".org"))
                         {
-                            listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
+                            isUntagged = true;
                         }
                     }
-                    if (audio.Tag.Album == null || Manipulator.ArrayToString(audio.Tag.Performers, ",") == string.Empty || Manipulator.ArrayToString(audio.Tag.Performers, ",") == string.Empty || audio.Tag.Title == string.Empty)
+
+                    if (string.IsNullOrEmpty(audio.Tag.Album) || 
+                        string.IsNullOrEmpty(Manipulator.ArrayToString(audio.Tag.Performers, ",")) || 
+                        string.IsNullOrEmpty(audio.Tag.Title))
+                    {
+                        isUntagged = true;
+                    }
+
+                    if (isUntagged)
                     {
                         listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
                     }
@@ -1013,24 +1041,33 @@ namespace Mp3TagReader.Forms
 
         private void getLyrics()
         {
-            LyricWiki wiki = new LyricWiki();
-            LyricsResult result = new LyricsResult();
-            string artist = txtArtist.Text;
-            string title = txtTitle.Text;
-            if (wiki.checkSongExists(artist, title))
+            try
             {
-                result = wiki.getSong(artist, title);
-                Process.Start(result.url);
-
-                //Encoding iso8859 = Encoding.GetEncoding("ISO-8859-1");
-                //txtLyrics.Text = Encoding.UTF8.GetString(iso8859.GetBytes(result.lyrics));
+                LyricWiki wiki = new LyricWiki();
+                LyricsResult result = new LyricsResult();
+                string artist = txtArtist.Text;
+                string title = txtTitle.Text;
+                if (wiki.checkSongExists(artist, title))
+                {
+                    result = wiki.getSong(artist, title);
+                    Process.Start(result.url);
+                }
+                else
+                {
+                    this.BeginInvoke((MethodInvoker)delegate
+                    {
+                        MessageBox.Show("Lyrics not found", "Info");
+                        Searcher searchLyric = new Searcher(title + " " + artist);
+                        searchLyric.Show(this);
+                    });
+                }
             }
-            else
+            catch (Exception ex)
             {
-                MessageBox.Show("Lyrics not found");
-
-                Searcher searchLyric = new Searcher(title + " " + artist);
-                searchLyric.Show();
+                this.BeginInvoke((MethodInvoker)delegate
+                {
+                    MessageBox.Show("Error fetching lyrics: " + ex.Message, "Error");
+                });
             }
         }
 

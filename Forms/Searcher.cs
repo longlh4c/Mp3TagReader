@@ -21,8 +21,7 @@ namespace Mp3TagReader.Forms
 
         private void _btnSearch_Click(object sender, EventArgs e)
         {
-            searchString = _txtSearchString.Text;
-            string url = string.Empty;
+            searchString = _txtSearchString.Text.Trim();
 
             if (searchString == string.Empty)
             {
@@ -31,53 +30,25 @@ namespace Mp3TagReader.Forms
                 return;
             }
 
-            else
+            string query = Uri.EscapeDataString(searchString).Replace("%20", "+");
+            string url = string.Empty;
+
+            if (_rbZing.Checked)
             {
-                searchString = searchString.Trim();
+                url = "http://mp3.zing.vn/tim-kiem/bai-hat.html?q=" + query;
+            }
+            else if (_rbSub.Checked)
+            {
+                url = "http://subscene.com/subtitles/title.aspx?q=" + query + "&l=";
+            }
+            else if (_rbLyric.Checked)
+            {
+                url = "http://search.azlyrics.com/search.php?q=" + query;
+            }
 
-                if (_rbZing.Checked == true)
-                {
-                    url = @"http://mp3.zing.vn/tim-kiem/bai-hat.html?q=";
-                    string[] words = searchString.Split(' ');
-                    foreach (string word in words)
-                    {
-                        url += word + "+";
-                    }
-
-                    url = url.Substring(0, url.LastIndexOf('+'));
-
-                    Process.Start(url);
-                }
-
-                else if (_rbSub.Checked == true)
-                {
-                    url = @"http://subscene.com/subtitles/title.aspx?q=";
-                    string[] words = searchString.Split(' ');
-                    foreach (string word in words)
-                    {
-                        url += word + "+";
-                    }
-
-                    url = url.Substring(0, url.LastIndexOf('+'));
-
-                    url += @"&l=";
-
-                    Process.Start(url);
-                }
-
-                else if (_rbLyric.Checked == true)
-                {
-                    url = @"http://search.azlyrics.com/search.php?q=";
-                    string[] words = searchString.Split(' ');
-                    foreach (string word in words)
-                    {
-                        url += word + "+";
-                    }
-
-                    url = url.Substring(0, url.LastIndexOf('+'));
-
-                    Process.Start(url);
-                }
+            if (url != string.Empty)
+            {
+                Process.Start(url);
             }
         }
     }

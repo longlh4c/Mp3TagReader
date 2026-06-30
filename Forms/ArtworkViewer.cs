@@ -31,7 +31,7 @@ namespace Mp3TagReader.Forms
 
         private void picBxArt_Click(object sender, EventArgs e)
         {
-            this.Dispose();
+            this.Close();
         }
     }
 }

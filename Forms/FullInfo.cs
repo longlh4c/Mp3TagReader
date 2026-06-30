@@ -15,6 +15,13 @@ namespace Mp3TagReader.Forms
             InitializeComponent();
         }
 
+        private uint SafeParseUInt(string text)
+        {
+            uint val;
+            uint.TryParse(text, out val);
+            return val;
+        }
+
         private void FullInfo_Load(object sender, EventArgs e)
         {
             try
@@ -38,7 +45,7 @@ namespace Mp3TagReader.Forms
                 txtAudioChannels.Text = mp3.Properties.AudioChannels.ToString();
                 txtAudioSampleRate.Text = mp3.Properties.AudioSampleRate.ToString();
                 txtDescription.Text = mp3.Properties.Description;
-                txtDuration.Text = mp3.Properties.Duration.Minutes + ":" + mp3.Properties.Duration.Seconds;
+                txtDuration.Text = string.Format("{0:00}:{1:00}", (int)mp3.Properties.Duration.TotalMinutes, mp3.Properties.Duration.Seconds);
             }
             catch (Exception) { }
         }
@@ -51,17 +58,17 @@ namespace Mp3TagReader.Forms
                 mp3.Tag.Performers = new string[] { txtArtist.Text };
                 mp3.Tag.Album = txtAlbum.Text;
                 mp3.Tag.Title = txtTitle.Text;
-                mp3.Tag.Track = Convert.ToUInt32(txtTrack.Text);
-                mp3.Tag.Year = Convert.ToUInt32(txtYear.Text);
+                mp3.Tag.Track = SafeParseUInt(txtTrack.Text);
+                mp3.Tag.Year = SafeParseUInt(txtYear.Text);
                 mp3.Tag.Genres = new string[] { txtGenre.Text };
                 mp3.Tag.Lyrics = txtLyrics.Text;
                 mp3.Tag.Comment = txtComments.Text;
                 mp3.Tag.AlbumArtists = new string[] { txtAlbumArtist.Text };
                 mp3.Tag.Composers = new string[] { txtComposer.Text };
                 mp3.Tag.Copyright = txtCopyright.Text;
-                mp3.Tag.BeatsPerMinute = Convert.ToUInt32(txtBPM.Text);
-                mp3.Tag.Disc = Convert.ToUInt32(txtDisc.Text);
-                mp3.Tag.DiscCount = Convert.ToUInt32(txtDiscCount.Text);
+                mp3.Tag.BeatsPerMinute = SafeParseUInt(txtBPM.Text);
+                mp3.Tag.Disc = SafeParseUInt(txtDisc.Text);
+                mp3.Tag.DiscCount = SafeParseUInt(txtDiscCount.Text);
                 mp3.Save();
                 lblResult.Text = "Saved";
             }
@@ -82,7 +89,7 @@ namespace Mp3TagReader.Forms
 
         private void btnClose_Click(object sender, EventArgs e)
         {
-            this.Dispose();
+            this.Close();
         }
     }
 }
