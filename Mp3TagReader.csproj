@@ -107,6 +107,12 @@
     <Compile Include="Forms\Mp3ConvertForm.Designer.cs">
       <DependentUpon>Mp3ConvertForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\YoutubeDownloadForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\YoutubeDownloadForm.Designer.cs">
+      <DependentUpon>YoutubeDownloadForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Helpers\Manipulator.cs" />
     <Compile Include="Models\Mp3Info.cs" />
     <Compile Include="Helpers\MySortableBindingList.cs" />

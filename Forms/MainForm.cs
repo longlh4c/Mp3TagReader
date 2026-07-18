@@ -30,7 +30,6 @@ namespace Mp3TagReader.Forms
         private FileInfo[] allFiles = null;
         private FileInfo[] mp3Files = null;
         private FileInfo[] wmaFiles = null;
-        private FileInfo[] flacFiles = null;
 
         private String folderListPath = "folderList.txt";
 
@@ -102,9 +101,8 @@ namespace Mp3TagReader.Forms
                 //_chkPlayAll.Checked = true;
                 //PlaySelectedMp3Files();
             }
-            catch (Exception ex)
+            catch
             {
-                //MessageBox.Show(ex.Message);
             }
         }
 
@@ -154,7 +152,7 @@ namespace Mp3TagReader.Forms
                 DirectoryInfo di = new DirectoryInfo(filePath);
                 return di.GetFiles(fileFormat, SearchOption.AllDirectories);
             }
-            catch (Exception e)
+            catch
             {
                 return null;
             }
@@ -262,41 +260,7 @@ namespace Mp3TagReader.Forms
             }
         }
 
-        private void CleanFileNames()
-        {
-            string result = string.Empty;
-            try
-            {
-                if (allFiles == null)
-                {
-                    MessageBox.Show("Please load files first", "Warning");
-                    return;
-                }
-                filePath = cbbFilePath.Text;
-                foreach (FileInfo file in allFiles)
-                {
-                    if (file.Name.Contains("%20"))
-                    {
-                        file.MoveTo(Path.Combine(filePath, file.Name.Replace("%20", " ")));
-                        result += file.Name + Environment.NewLine;
-                    }
-                }
-                if (result == string.Empty)
-                {
-                    lblResult.Text = "No need to clean";
-                }
-                else
-                {
-                    ListFiles();
-                    lblResult.Text = "Cleaned";
-                    MessageBox.Show(result);
-                }
-            }
-            catch (Exception e)
-            {
-                MessageBox.Show(e.Message);
-            }
-        }
+
 
         private Byte[] binArtwork;
         private TagLib.File selectedMp3;
@@ -985,10 +949,7 @@ namespace Mp3TagReader.Forms
             Application.Exit();
         }
 
-        private void fix20ToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            CleanFileNames();
-        }
+
 
         private static int artistFlag = 0;
         private static int titleFlag = 0;
@@ -1186,100 +1147,9 @@ namespace Mp3TagReader.Forms
             }
         }
 
-        private void move128KbpsFilesToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            //MessageBox.Show("Please modify the code", "Warning");
-            //return;
-            //string fromFolder = @"D:\Test\music";
-            //string toFolder = @"D:\Test\128";
-            //move128kbps(fromFolder, toFolder);
-        }
 
-        private void move128kbps(String fromFolder, String toFolder)
-        {
-            if (fromFolder == string.Empty || toFolder == string.Empty)
-            {
-                MessageBox.Show("fromFolder is not set", "Warning");
-                return;
-            }
 
-            DirectoryInfo di = new DirectoryInfo(fromFolder);
-            mp3Files = di.GetFiles("*.mp3", SearchOption.AllDirectories);
-            wmaFiles = di.GetFiles("*.wma", SearchOption.AllDirectories);
-            TagLib.File audio;
-            try
-            {
-                foreach (FileInfo fi in mp3Files)
-                {
-                    audio = TagLib.File.Create(fi.FullName);
-                    if (audio.Properties.AudioBitrate <= 128)
-                    {
-                        listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
-                        fi.MoveTo(Path.Combine(toFolder, fi.Name));
-                    }
-                }
-                foreach (FileInfo fi in wmaFiles)
-                {
-                    audio = TagLib.File.Create(fi.FullName);
-                    if (audio.Properties.AudioBitrate <= 128)
-                    {
-                        listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
-                        fi.MoveTo(Path.Combine(toFolder, fi.Name));
-                    }
-                }
-                gridView.DataSource = listMp3Infos;
-                _lblCount.Text = gridView.RowCount.ToString() + " files";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString());
-                return;
-            }
-        }
 
-        private void list128KbpsFilesToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            DirectoryInfo di = new DirectoryInfo(cbbFilePath.Text);
-            mp3Files = di.GetFiles("*.mp3", SearchOption.AllDirectories);
-            wmaFiles = di.GetFiles("*.wma", SearchOption.AllDirectories);
-            TagLib.File audio;
-            try
-            {
-                foreach (FileInfo fi in mp3Files)
-                {
-                    audio = TagLib.File.Create(fi.FullName);
-                    if (audio.Properties.AudioBitrate <= 128)
-                    {
-                        listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
-                    }
-                }
-                foreach (FileInfo fi in wmaFiles)
-                {
-                    audio = TagLib.File.Create(fi.FullName);
-                    if (audio.Properties.AudioBitrate <= 128)
-                    {
-                        listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
-                    }
-                }
-                gridView.DataSource = listMp3Infos;
-                _lblCount.Text = gridView.RowCount.ToString() + " files";
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.ToString());
-                return;
-            }
-        }
-
-        private void browseToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (folderBrowserDialog.ShowDialog() == DialogResult.OK)
-            {
-                this.cbbFilePath.Text = folderBrowserDialog.SelectedPath;
-                filePath = cbbFilePath.Text;
-            }
-            else { }
-        }
 
         private void timerNowPlaying_Tick(object sender, EventArgs e)
         {
@@ -1310,67 +1180,7 @@ namespace Mp3TagReader.Forms
             catch { }
         }
 
-        private void browseFileToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            if (openFileDialog.ShowDialog() == DialogResult.OK)
-            {
-                ClearMp3List();
-                listMp3Infos.Add(new Mp3Info(openFileDialog.FileName, openFileDialog.SafeFileName, System.IO.File.GetCreationTime(openFileDialog.FileName)));
-                gridView.DataSource = listMp3Infos;
-            }
-            else { }
-        }
 
-        private void deleteFlacFilesToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            ClearMp3List();
-
-            if (_txtExtensionToRemove.Text.Contains("File"))
-            {
-                MessageBox.Show("Input file extension first", "Warning");
-                _txtExtensionToRemove.Focus();
-                return;
-            }
-
-            filePath = cbbFilePath.Text;
-            DirectoryInfo di = new DirectoryInfo(filePath);
-            flacFiles = di.GetFiles("*." + _txtExtensionToRemove.Text, SearchOption.AllDirectories);
-
-            foreach (FileInfo fi in flacFiles)
-            {
-                listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
-            }
-
-            gridView.DataSource = listMp3Infos;
-            _lblCount.Text = gridView.RowCount.ToString() + " files";
-
-            if (gridView.RowCount == 0)
-            {
-                MessageBox.Show("Nothing to remove", "Warning");
-                return;
-            }
-
-            if (MessageBox.Show("Will you really remove " + _lblCount.Text + " items in " + filePath + " ?", "Warning", MessageBoxButtons.OKCancel) == DialogResult.OK)
-            {
-                foreach (FileInfo fi in flacFiles)
-                {
-                    System.IO.File.Delete(fi.FullName);
-                }
-
-                MessageBox.Show("Success", "Warning");
-
-                flacFiles = di.GetFiles("*." + _txtExtensionToRemove.Text, SearchOption.AllDirectories);
-
-                foreach (FileInfo fi in flacFiles)
-                {
-                    listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
-                }
-
-                gridView.DataSource = listMp3Infos;
-                _lblCount.Text = gridView.RowCount.ToString() + " files";
-            }
-            else { }
-        }
 
         private void _btnPrev_Click(object sender, EventArgs e)
         {
@@ -1438,11 +1248,7 @@ namespace Mp3TagReader.Forms
             }
         }
 
-        private void searchZINGToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            Searcher zs = new Searcher("");
-            zs.Show();
-        }
+
 
         private void _chkShuffle_CheckedChanged(object sender, EventArgs e)
         {
@@ -1621,48 +1427,7 @@ namespace Mp3TagReader.Forms
             }
         }
 
-        private void checkDuplicateToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            TagLib.File audio;
-            ClearMp3List();
-            try
-            {
-                if (mp3Files == null || wmaFiles == null)
-                {
-                    MessageBox.Show("Please load files first", "Warning");
-                    return;
-                }
-                foreach (FileInfo fi in mp3Files)
-                {
-                    audio = TagLib.File.Create(fi.FullName, ReadStyle.None);
-                    if (audio.Tag.Album != null)
-                    {
-                        if (audio.Tag.Album.ToLower().Contains("/") || Manipulator.ArrayToString(audio.Tag.Performers, ",").ToLower().Contains(",") || Manipulator.ArrayToString(audio.Tag.Performers, ",").ToLower().Contains("/") || (audio.Tag.Title != null && audio.Tag.Title.ToLower().Contains("/")))
-                        {
-                            listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
-                        }
-                    }
-                }
-                foreach (FileInfo fi in wmaFiles)
-                {
-                    audio = TagLib.File.Create(fi.FullName, ReadStyle.None);
-                    if (audio.Tag.Album != null)
-                    {
-                        if (audio.Tag.Album.ToLower().Contains("/") || Manipulator.ArrayToString(audio.Tag.Performers, ",").ToLower().Contains(",") || Manipulator.ArrayToString(audio.Tag.Performers, ",").ToLower().Contains("/") || (audio.Tag.Title != null && audio.Tag.Title.ToLower().Contains("/")))
-                        {
-                            listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
-                        }
-                    }
-                }
-                gridView.DataSource = listMp3Infos;
-                _lblCount.Text = gridView.RowCount.ToString() + " files";
-            }
-            catch (CorruptFileException ex)
-            {
-                MessageBox.Show(ex.ToString());
-                return;
-            }
-        }
+
 
         private void btnVolumeUp_Click(object sender, EventArgs e)
         {
@@ -1894,18 +1659,21 @@ namespace Mp3TagReader.Forms
             }
         }
 
-        private void addToContextMenuToolStripMenuItem_Click(object sender, EventArgs e)
+
+
+        private void downloadMP3FromYouTubeToolStripMenuItem_Click(object sender, EventArgs e)
         {
-            MessageBox.Show(AddToContext.Add(), "Information");
+            using (YoutubeDownloadForm downloadForm = new YoutubeDownloadForm(cbbFilePath.Text))
+            {
+                if (downloadForm.ShowDialog(this) == DialogResult.OK)
+                {
+                    cbbFilePath.Text = downloadForm.OutputFolder;
+                    ListFiles();
+                }
+            }
         }
 
-        private void removeFromContextMenuToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            MessageBox.Show(AddToContext.Remove(), "Information");
-        }
 
-        private DirectoryInfo[] folders = null;
-        private DirectoryInfo[] folders2 = null;
 
         private void cbbFilePath_TextChanged(object sender, EventArgs e)
         {

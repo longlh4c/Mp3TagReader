@@ -42,7 +42,7 @@ namespace Mp3TagReader.Forms
             cbbBitrate.Items.Add("192 kbps");
             cbbBitrate.Items.Add("256 kbps");
             cbbBitrate.Items.Add("320 kbps");
-            cbbBitrate.SelectedIndex = 1; // Default to 192 kbps
+            cbbBitrate.SelectedIndex = 0; // Default to 128 kbps
 
             // Get total duration using TagLib
             try

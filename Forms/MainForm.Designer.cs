@@ -58,17 +58,8 @@ namespace Mp3TagReader.Forms
             this._btnPlayAll = new System.Windows.Forms.Button();
             this.menuStrip1 = new System.Windows.Forms.MenuStrip();
             this.menuToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.browseToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.browseFileToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.fix20ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.checkDuplicateToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.fixTrackNumberToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.searchToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.list128KbpsFilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.move128KbpsFilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.deleteFlacFilesToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.addToContextMenuToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
-            this.removeFromContextMenuToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.downloadMP3FromYouTubeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this._btnGetLyrics = new System.Windows.Forms.Button();
             this._btnInfo = new System.Windows.Forms.Button();
@@ -77,7 +68,6 @@ namespace Mp3TagReader.Forms
             this.timerNowPlayingText = new System.Windows.Forms.Timer(this.components);
             this._btnClearLyrics = new System.Windows.Forms.Button();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
-            this._txtExtensionToRemove = new System.Windows.Forms.TextBox();
             this._btnNext = new System.Windows.Forms.Button();
             this._btnPrev = new System.Windows.Forms.Button();
             this._chkShuffle = new System.Windows.Forms.CheckBox();
@@ -382,49 +372,12 @@ namespace Mp3TagReader.Forms
             // menuToolStripMenuItem
             // 
             this.menuToolStripMenuItem.DropDownItems.AddRange(new System.Windows.Forms.ToolStripItem[] {
-            this.browseToolStripMenuItem,
-            this.browseFileToolStripMenuItem,
-            this.fix20ToolStripMenuItem,
-            this.checkDuplicateToolStripMenuItem,
             this.fixTrackNumberToolStripMenuItem,
-            this.searchToolStripMenuItem,
-            this.list128KbpsFilesToolStripMenuItem,
-            this.move128KbpsFilesToolStripMenuItem,
-            this.deleteFlacFilesToolStripMenuItem,
-            this.addToContextMenuToolStripMenuItem,
-            this.removeFromContextMenuToolStripMenuItem,
+            this.downloadMP3FromYouTubeToolStripMenuItem,
             this.exitToolStripMenuItem});
             this.menuToolStripMenuItem.Name = "menuToolStripMenuItem";
             this.menuToolStripMenuItem.Size = new System.Drawing.Size(50, 20);
             this.menuToolStripMenuItem.Text = "Menu";
-            // 
-            // browseToolStripMenuItem
-            // 
-            this.browseToolStripMenuItem.Name = "browseToolStripMenuItem";
-            this.browseToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
-            this.browseToolStripMenuItem.Text = "Browse Folder";
-            this.browseToolStripMenuItem.Click += new System.EventHandler(this.browseToolStripMenuItem_Click);
-            // 
-            // browseFileToolStripMenuItem
-            // 
-            this.browseFileToolStripMenuItem.Name = "browseFileToolStripMenuItem";
-            this.browseFileToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
-            this.browseFileToolStripMenuItem.Text = "Browse File";
-            this.browseFileToolStripMenuItem.Click += new System.EventHandler(this.browseFileToolStripMenuItem_Click);
-            // 
-            // fix20ToolStripMenuItem
-            // 
-            this.fix20ToolStripMenuItem.Name = "fix20ToolStripMenuItem";
-            this.fix20ToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
-            this.fix20ToolStripMenuItem.Text = "Fix %20";
-            this.fix20ToolStripMenuItem.Click += new System.EventHandler(this.fix20ToolStripMenuItem_Click);
-            // 
-            // checkDuplicateToolStripMenuItem
-            // 
-            this.checkDuplicateToolStripMenuItem.Name = "checkDuplicateToolStripMenuItem";
-            this.checkDuplicateToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
-            this.checkDuplicateToolStripMenuItem.Text = "Check Duplicate \"/\"";
-            this.checkDuplicateToolStripMenuItem.Click += new System.EventHandler(this.checkDuplicateToolStripMenuItem_Click);
             // 
             // fixTrackNumberToolStripMenuItem
             // 
@@ -433,47 +386,12 @@ namespace Mp3TagReader.Forms
             this.fixTrackNumberToolStripMenuItem.Text = "Fix Track Number";
             this.fixTrackNumberToolStripMenuItem.Click += new System.EventHandler(this.fixTrackNumberToolStripMenuItem_Click);
             // 
-            // searchToolStripMenuItem
+            // downloadMP3FromYouTubeToolStripMenuItem
             // 
-            this.searchToolStripMenuItem.Name = "searchToolStripMenuItem";
-            this.searchToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
-            this.searchToolStripMenuItem.Text = "Search Sites";
-            this.searchToolStripMenuItem.Click += new System.EventHandler(this.searchZINGToolStripMenuItem_Click);
-            // 
-            // list128KbpsFilesToolStripMenuItem
-            // 
-            this.list128KbpsFilesToolStripMenuItem.Name = "list128KbpsFilesToolStripMenuItem";
-            this.list128KbpsFilesToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
-            this.list128KbpsFilesToolStripMenuItem.Text = "List 128Kbps Files";
-            this.list128KbpsFilesToolStripMenuItem.Click += new System.EventHandler(this.list128KbpsFilesToolStripMenuItem_Click);
-            // 
-            // move128KbpsFilesToolStripMenuItem
-            // 
-            this.move128KbpsFilesToolStripMenuItem.Name = "move128KbpsFilesToolStripMenuItem";
-            this.move128KbpsFilesToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
-            this.move128KbpsFilesToolStripMenuItem.Text = "Move 128Kbps Files";
-            this.move128KbpsFilesToolStripMenuItem.Click += new System.EventHandler(this.move128KbpsFilesToolStripMenuItem_Click);
-            // 
-            // deleteFlacFilesToolStripMenuItem
-            // 
-            this.deleteFlacFilesToolStripMenuItem.Name = "deleteFlacFilesToolStripMenuItem";
-            this.deleteFlacFilesToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
-            this.deleteFlacFilesToolStripMenuItem.Text = "Delete File Extensions";
-            this.deleteFlacFilesToolStripMenuItem.Click += new System.EventHandler(this.deleteFlacFilesToolStripMenuItem_Click);
-            // 
-            // addToContextMenuToolStripMenuItem
-            // 
-            this.addToContextMenuToolStripMenuItem.Name = "addToContextMenuToolStripMenuItem";
-            this.addToContextMenuToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
-            this.addToContextMenuToolStripMenuItem.Text = "Add to Context Menu";
-            this.addToContextMenuToolStripMenuItem.Click += new System.EventHandler(this.addToContextMenuToolStripMenuItem_Click);
-            // 
-            // removeFromContextMenuToolStripMenuItem
-            // 
-            this.removeFromContextMenuToolStripMenuItem.Name = "removeFromContextMenuToolStripMenuItem";
-            this.removeFromContextMenuToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
-            this.removeFromContextMenuToolStripMenuItem.Text = "Remove from Context Menu";
-            this.removeFromContextMenuToolStripMenuItem.Click += new System.EventHandler(this.removeFromContextMenuToolStripMenuItem_Click);
+            this.downloadMP3FromYouTubeToolStripMenuItem.Name = "downloadMP3FromYouTubeToolStripMenuItem";
+            this.downloadMP3FromYouTubeToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
+            this.downloadMP3FromYouTubeToolStripMenuItem.Text = "Download MP3 from YouTube...";
+            this.downloadMP3FromYouTubeToolStripMenuItem.Click += new System.EventHandler(this.downloadMP3FromYouTubeToolStripMenuItem_Click);
             // 
             // exitToolStripMenuItem
             // 
@@ -540,15 +458,7 @@ namespace Mp3TagReader.Forms
             this.openFileDialog.Filter = "All Files (*.*)|*.*";
             this.openFileDialog.InitialDirectory = "E:\\";
             this.openFileDialog.Multiselect = true;
-            // 
-            // _txtExtensionToRemove
-            // 
-            this._txtExtensionToRemove.Location = new System.Drawing.Point(64, 7);
-            this._txtExtensionToRemove.Name = "_txtExtensionToRemove";
-            this._txtExtensionToRemove.Size = new System.Drawing.Size(100, 20);
-            this._txtExtensionToRemove.TabIndex = 44;
-            this._txtExtensionToRemove.Text = "*File extension";
-            // 
+
             // _btnNext
             // 
             this._btnNext.Location = new System.Drawing.Point(179, 483);
@@ -902,7 +812,6 @@ namespace Mp3TagReader.Forms
             this.Controls.Add(this._btnPrev);
             this.Controls.Add(this._btnNext);
             this.Controls.Add(this._btnClearLyrics);
-            this.Controls.Add(this._txtExtensionToRemove);
             this.Controls.Add(this._btnCopy);
             this.Controls.Add(this._btnInfo);
             this.Controls.Add(this._btnGetLyrics);
@@ -981,23 +890,16 @@ namespace Mp3TagReader.Forms
         private System.Windows.Forms.Button _btnPlayAll;
         private System.Windows.Forms.MenuStrip menuStrip1;
         private System.Windows.Forms.ToolStripMenuItem menuToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem fix20ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem exitToolStripMenuItem;
         private System.Windows.Forms.Button _btnGetLyrics;
         private System.Windows.Forms.Button _btnInfo;
         private System.Windows.Forms.Timer timerSong;
-        private System.Windows.Forms.ToolStripMenuItem move128KbpsFilesToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem browseToolStripMenuItem;
         private System.Windows.Forms.Button _btnCopy;
         private System.Windows.Forms.Timer timerNowPlayingText;
         private System.Windows.Forms.Button _btnClearLyrics;
-        private System.Windows.Forms.ToolStripMenuItem browseFileToolStripMenuItem;
         private System.Windows.Forms.OpenFileDialog openFileDialog;
-        private System.Windows.Forms.ToolStripMenuItem deleteFlacFilesToolStripMenuItem;
-        private System.Windows.Forms.TextBox _txtExtensionToRemove;
         private System.Windows.Forms.Button _btnNext;
         private System.Windows.Forms.Button _btnPrev;
-        private System.Windows.Forms.ToolStripMenuItem searchToolStripMenuItem;
         private System.Windows.Forms.CheckBox _chkShuffle;
         private System.Windows.Forms.CheckBox _chkPlayAll;
         private System.Windows.Forms.ImageList imageListFolder;
@@ -1006,7 +908,6 @@ namespace Mp3TagReader.Forms
         private System.Windows.Forms.TreeView treeViewFolder;
         private System.Windows.Forms.ToolStripMenuItem openFolderToolStripMenuItem;
         private System.Windows.Forms.Button _btnDisableTimerSong;
-        private System.Windows.Forms.ToolStripMenuItem checkDuplicateToolStripMenuItem;
         private System.Windows.Forms.Button btnVolumeUp;
         private System.Windows.Forms.Button btnVolumeDown;
         private System.Windows.Forms.Button btnMute;
@@ -1022,9 +923,6 @@ namespace Mp3TagReader.Forms
         private System.Windows.Forms.ToolStripMenuItem renameToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem removeAllToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem fixTrackNumberToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem addToContextMenuToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem removeFromContextMenuToolStripMenuItem;
-        private System.Windows.Forms.ToolStripMenuItem list128KbpsFilesToolStripMenuItem;
         private System.Windows.Forms.ComboBox cbbFilePath;
         private System.Windows.Forms.PictureBox picBxArtwork;
         private System.Windows.Forms.Button btnSetArtwork;
@@ -1036,6 +934,7 @@ namespace Mp3TagReader.Forms
         private System.Windows.Forms.Label lblSelectedFilePath;
         private System.Windows.Forms.CheckBox _chkAllFiles;
         private System.Windows.Forms.ToolStripMenuItem convertToMp3ToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem downloadMP3FromYouTubeToolStripMenuItem;
     }
 }
 
