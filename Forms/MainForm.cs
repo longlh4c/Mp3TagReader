@@ -42,6 +42,34 @@ namespace Mp3TagReader.Forms
         private GroupBox playerGroupBox;
         private Label lblTotalTime;
 
+        public enum PlaybackState
+        {
+            Stopped,
+            Playing,
+            Paused
+        }
+        private PlaybackState currentPlaybackState = PlaybackState.Stopped;
+
+        private void UpdatePlaybackUI(PlaybackState newState)
+        {
+            currentPlaybackState = newState;
+            switch (newState)
+            {
+                case PlaybackState.Playing:
+                    _btnPlayAll.Text = "\u23F8"; // ⏸ icon only
+                    timerNowPlayingText.Enabled = true;
+                    break;
+                case PlaybackState.Paused:
+                    _btnPlayAll.Text = "\u25B6"; // ▶ icon only
+                    timerNowPlayingText.Enabled = false;
+                    break;
+                case PlaybackState.Stopped:
+                    _btnPlayAll.Text = "\u25B6"; // ▶ icon only
+                    timerNowPlayingText.Enabled = false;
+                    break;
+            }
+        }
+
         [System.Runtime.InteropServices.DllImport("winmm.dll")]
         private static extern long mciSendString(string strCommand, StringBuilder strReturn, int iReturnLength, IntPtr hwndCallback);
 
@@ -714,14 +742,12 @@ namespace Mp3TagReader.Forms
                         if (startIndex < pl.count)
                             windowsMediaPlayer.controls.currentItem = pl.get_Item(startIndex);
                         windowsMediaPlayer.controls.play();
-                        _btnPlayAll.Text = "⏸  Pause";
-
-                        timerNowPlayingText.Enabled = true;
-
+                        UpdatePlaybackUI(PlaybackState.Playing);
+ 
                         // If shuffle is on, update gridView selection to the randomly chosen song
                         if (_chkShuffle.Checked)
                             new System.Threading.Timer(_ => this.Invoke((Action)SelectCurrentPlayingRow), null, 350, System.Threading.Timeout.Infinite);
-
+ 
                         this.Text = "Now Playing - " + Path.GetFileNameWithoutExtension(selectedFileName) + " | ";
                     }
                 }
@@ -739,11 +765,11 @@ namespace Mp3TagReader.Forms
                 if (!isFolder())
                 {
                     //mciSendString("close MediaFile", null, 0, IntPtr.Zero);
-                    _btnPlayAll.Text = "▶  Play";
                 }
 
                 windowsMediaPlayer.controls.stop();
                 windowsMediaPlayer.close();
+                UpdatePlaybackUI(PlaybackState.Stopped);
 
                 this.Text = "Mp3TagReader";
 
@@ -908,22 +934,19 @@ namespace Mp3TagReader.Forms
                 return;
             }
 
-            if (_btnPlayAll.Text.Contains("Play"))
+            if (currentPlaybackState == PlaybackState.Stopped)
             {
                 PlaySelectedMp3Files();
-
             }
-            else if (_btnPlayAll.Text.Contains("Pause"))
+            else if (currentPlaybackState == PlaybackState.Playing)
             {
                 windowsMediaPlayer.controls.pause();
-                _btnPlayAll.Text = "▶  Resume";
-                timerNowPlayingText.Enabled = false;
+                UpdatePlaybackUI(PlaybackState.Paused);
             }
-            else if (_btnPlayAll.Text.Contains("Resume"))
+            else if (currentPlaybackState == PlaybackState.Paused)
             {
                 windowsMediaPlayer.controls.play();
-                _btnPlayAll.Text = "⏸  Pause";
-                timerNowPlayingText.Enabled = true;
+                UpdatePlaybackUI(PlaybackState.Playing);
             }
         }
 
@@ -1131,7 +1154,7 @@ namespace Mp3TagReader.Forms
                 }
                 else
                 {
-                    if (_btnPlayAll.Text.Contains("Pause"))
+                    if (currentPlaybackState == PlaybackState.Playing)
                     {
                         // Custom Repeat One handler: if track is near end, loop it back to start
                         if (replayState == 2 && windowsMediaPlayer.currentMedia != null)
