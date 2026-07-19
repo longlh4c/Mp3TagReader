@@ -71,7 +71,7 @@ namespace Mp3TagReader.Forms
             this._btnNext = new System.Windows.Forms.Button();
             this._btnPrev = new System.Windows.Forms.Button();
             this._chkShuffle = new System.Windows.Forms.CheckBox();
-            this._chkPlayAll = new System.Windows.Forms.CheckBox();
+
             this.imageListFolder = new System.Windows.Forms.ImageList(this.components);
             this.contextMenuFolder = new System.Windows.Forms.ContextMenuStrip(this.components);
             this.copyToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
@@ -489,16 +489,7 @@ namespace Mp3TagReader.Forms
             this._chkShuffle.Text = "Shuffle";
             this._chkShuffle.UseVisualStyleBackColor = true;
             this._chkShuffle.CheckedChanged += new System.EventHandler(this._chkShuffle_CheckedChanged);
-            // 
-            // _chkPlayAll
-            // 
-            this._chkPlayAll.AutoSize = true;
-            this._chkPlayAll.Location = new System.Drawing.Point(255, 494);
-            this._chkPlayAll.Name = "_chkPlayAll";
-            this._chkPlayAll.Size = new System.Drawing.Size(57, 17);
-            this._chkPlayAll.TabIndex = 48;
-            this._chkPlayAll.Text = "PlayAll";
-            this._chkPlayAll.UseVisualStyleBackColor = true;
+
             // 
             // imageListFolder
             // 
@@ -562,7 +553,7 @@ namespace Mp3TagReader.Forms
             this.btnVolumeUp.TabIndex = 54;
             this.btnVolumeUp.Text = "Volume +";
             this.btnVolumeUp.UseVisualStyleBackColor = true;
-            this.btnVolumeUp.Click += new System.EventHandler(this.btnVolumeUp_Click);
+
             // 
             // btnVolumeDown
             // 
@@ -572,7 +563,7 @@ namespace Mp3TagReader.Forms
             this.btnVolumeDown.TabIndex = 55;
             this.btnVolumeDown.Text = "Volume -";
             this.btnVolumeDown.UseVisualStyleBackColor = true;
-            this.btnVolumeDown.Click += new System.EventHandler(this.btnVolumeDown_Click);
+
             // 
             // btnMute
             // 
@@ -582,7 +573,7 @@ namespace Mp3TagReader.Forms
             this.btnMute.TabIndex = 56;
             this.btnMute.Text = "Mute";
             this.btnMute.UseVisualStyleBackColor = true;
-            this.btnMute.Click += new System.EventHandler(this.btnMute_Click);
+
             // 
             // label1
             // 
@@ -807,7 +798,7 @@ namespace Mp3TagReader.Forms
             this.Controls.Add(this.btnVolumeUp);
             this.Controls.Add(this._btnDisableTimerSong);
             this.Controls.Add(this.treeViewFolder);
-            this.Controls.Add(this._chkPlayAll);
+
             this.Controls.Add(this._chkShuffle);
             this.Controls.Add(this._btnPrev);
             this.Controls.Add(this._btnNext);
@@ -901,7 +892,7 @@ namespace Mp3TagReader.Forms
         private System.Windows.Forms.Button _btnNext;
         private System.Windows.Forms.Button _btnPrev;
         private System.Windows.Forms.CheckBox _chkShuffle;
-        private System.Windows.Forms.CheckBox _chkPlayAll;
+
         private System.Windows.Forms.ImageList imageListFolder;
         private System.Windows.Forms.ContextMenuStrip contextMenuFolder;
         private System.Windows.Forms.ToolStripMenuItem copyToolStripMenuItem;

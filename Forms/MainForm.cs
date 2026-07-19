@@ -37,6 +37,11 @@ namespace Mp3TagReader.Forms
         private WMPLib.IWMPPlaylistArray plItems;
         private WMPLib.WindowsMediaPlayer windowsMediaPlayer = new WMPLib.WindowsMediaPlayer();
 
+        // 0: Off, 1: Repeat Playlist (Loop), 2: Repeat One
+        private int replayState = 0;
+        private GroupBox playerGroupBox;
+        private Label lblTotalTime;
+
         [System.Runtime.InteropServices.DllImport("winmm.dll")]
         private static extern long mciSendString(string strCommand, StringBuilder strReturn, int iReturnLength, IntPtr hwndCallback);
 
@@ -56,6 +61,7 @@ namespace Mp3TagReader.Forms
         public MainForm()
         {
             InitializeComponent();
+            InitializeModernLayout();
             this.FormClosing += MainForm_FormClosing;
         }
 
@@ -98,7 +104,7 @@ namespace Mp3TagReader.Forms
                 // special: for autoplay
                 //ListFiles();
                 //windowsMediaPlayer.settings.setMode("shuffle", true);
-                //_chkPlayAll.Checked = true;
+
                 //PlaySelectedMp3Files();
             }
             catch
@@ -496,6 +502,7 @@ namespace Mp3TagReader.Forms
 
         private void gridView_CellClick(object sender, DataGridViewCellEventArgs e)
         {
+            if (e.RowIndex < 0) return; // Header clicked, ignore
             try
             {
                 artistFlag = 0;
@@ -586,7 +593,7 @@ namespace Mp3TagReader.Forms
 
                     if (windowsMediaPlayer.playState == WMPLib.WMPPlayState.wmppsPlaying)
                     {
-                        if (_chkReplay.Checked == true) // loop
+                        if (replayState == 1) // repeat playlist
                         {
                             windowsMediaPlayer.settings.setMode("loop", true);
                         }
@@ -610,33 +617,23 @@ namespace Mp3TagReader.Forms
 
                         int index = getSongIndex(selectedFileName);
 
+                        // Build a FULL playlist with all songs so Prev/Next wrap correctly
                         string fi = string.Empty;
-                        if (_chkPlayAll.Checked == true) // play all songs in list
+                        int wmpStartIndex = 0; // WMP playlist index of the selected song
+                        int audioCount = 0;
+                        for (int i = 0; i <= gridView.Rows.Count - 1; i++)
                         {
-                            for (int i = index; i <= gridView.Rows.Count - 1; i++)
+                            fi = gridView.Rows[i].Cells["ColumnPath"].Value.ToString();
+                            if (Manipulator.IsAudioFile(fi))
                             {
-                                fi = gridView.Rows[i].Cells["ColumnPath"].Value.ToString();
-                                if (Manipulator.IsAudioFile(fi))
-                                {
-                                    WMPLib.IWMPMedia m1 = windowsMediaPlayer.newMedia(fi);
-                                    pl.appendItem(m1);
-                                }
-                            }
-                        }
-                        else // play selected songs
-                        {
-                            foreach (DataGridViewRow row in gridView.SelectedRows)
-                            {
-                                fi = row.Cells["ColumnPath"].Value.ToString();
-                                if (Manipulator.IsAudioFile(fi))
-                                {
-                                    WMPLib.IWMPMedia m1 = windowsMediaPlayer.newMedia(fi);
-                                    pl.appendItem(m1);
-                                }
+                                WMPLib.IWMPMedia m1 = windowsMediaPlayer.newMedia(fi);
+                                pl.appendItem(m1);
+                                if (i < index) wmpStartIndex++; // count audio-only items before selected
+                                audioCount++;
                             }
                         }
 
-                        if (_chkReplay.Checked == true)
+                        if (replayState == 1) // repeat playlist
                         {
                             windowsMediaPlayer.settings.setMode("loop", true);
                         }
@@ -647,10 +644,22 @@ namespace Mp3TagReader.Forms
                         }
 
                         windowsMediaPlayer.currentPlaylist = pl;
+
+                        // Determine start position: random if shuffle, else selected song
+                        int startIndex = wmpStartIndex;
+                        if (_chkShuffle.Checked && pl.count > 0)
+                            startIndex = new System.Random().Next(0, pl.count);
+
+                        if (startIndex < pl.count)
+                            windowsMediaPlayer.controls.currentItem = pl.get_Item(startIndex);
                         windowsMediaPlayer.controls.play();
-                        _btnPlayAll.Text = "Pause";
+                        _btnPlayAll.Text = "⏸  Pause";
 
                         timerNowPlayingText.Enabled = true;
+
+                        // If shuffle is on, update gridView selection to the randomly chosen song
+                        if (_chkShuffle.Checked)
+                            new System.Threading.Timer(_ => this.Invoke((Action)SelectCurrentPlayingRow), null, 350, System.Threading.Timeout.Infinite);
 
                         this.Text = "Now Playing - " + Path.GetFileNameWithoutExtension(selectedFileName) + " | ";
                     }
@@ -669,7 +678,7 @@ namespace Mp3TagReader.Forms
                 if (!isFolder())
                 {
                     //mciSendString("close MediaFile", null, 0, IntPtr.Zero);
-                    _btnPlayAll.Text = "Play";
+                    _btnPlayAll.Text = "▶  Play";
                 }
 
                 windowsMediaPlayer.controls.stop();
@@ -678,7 +687,7 @@ namespace Mp3TagReader.Forms
                 this.Text = "Mp3TagReader";
 
                 timerNowPlayingText.Enabled = false;
-                _chkPlayAll.Enabled = true;
+
 
                 // progress bar
                 setProgressBar(0);
@@ -748,16 +757,27 @@ namespace Mp3TagReader.Forms
 
         private void chkReplay_CheckedChanged(object sender, EventArgs e)
         {
-            if (windowsMediaPlayer.playState == WMPLib.WMPPlayState.wmppsPlaying)
+            // Cycle: 0 (Off) -> 1 (Repeat Playlist) -> 2 (Repeat One)
+            replayState = (replayState + 1) % 3;
+            
+            if (replayState == 0)
             {
-                if (_chkReplay.Checked == true) // loop
-                {
-                    windowsMediaPlayer.settings.setMode("loop", true);
-                }
-                else
-                {
-                    windowsMediaPlayer.settings.setMode("loop", false);
-                }
+                _chkReplay.Checked = false;
+                _chkReplay.Text = "\u21BA"; // ↺ default icon
+                windowsMediaPlayer.settings.setMode("loop", false);
+            }
+            else if (replayState == 1)
+            {
+                _chkReplay.Checked = true;
+                _chkReplay.Text = "\u21BA\u1D3A"; // ↺ᴬ (All)
+                windowsMediaPlayer.settings.setMode("loop", true);
+            }
+            else if (replayState == 2)
+            {
+                _chkReplay.Checked = true;
+                _chkReplay.Text = "\u21BA\u00B9"; // ↺¹ (One)
+                // Disable native playlist loop, we will manually loop the single item in timerSong_Tick
+                windowsMediaPlayer.settings.setMode("loop", false);
             }
         }
 
@@ -827,27 +847,28 @@ namespace Mp3TagReader.Forms
                 return;
             }
 
-            if (_btnPlayAll.Text == "Play")
+            if (_btnPlayAll.Text.Contains("Play"))
             {
                 PlaySelectedMp3Files();
-                _chkPlayAll.Enabled = false;
+
             }
-            else if (_btnPlayAll.Text == "Pause")
+            else if (_btnPlayAll.Text.Contains("Pause"))
             {
                 windowsMediaPlayer.controls.pause();
-                _btnPlayAll.Text = "Resume";
+                _btnPlayAll.Text = "▶  Resume";
                 timerNowPlayingText.Enabled = false;
             }
-            else if (_btnPlayAll.Text == "Resume")
+            else if (_btnPlayAll.Text.Contains("Resume"))
             {
                 windowsMediaPlayer.controls.play();
-                _btnPlayAll.Text = "Pause";
+                _btnPlayAll.Text = "⏸  Pause";
                 timerNowPlayingText.Enabled = true;
             }
         }
 
         private void gridView_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
+            if (e.RowIndex < 0) return; // Header double-clicked, ignore
             // open folder
             try
             {
@@ -1049,24 +1070,23 @@ namespace Mp3TagReader.Forms
                 }
                 else
                 {
-                    if (_btnPlayAll.Text == "Pause")
+                    if (_btnPlayAll.Text.Contains("Pause"))
                     {
-                        int songIndex = 0;
+                        // Custom Repeat One handler: if track is near end, loop it back to start
+                        if (replayState == 2 && windowsMediaPlayer.currentMedia != null)
+                        {
+                            double duration = windowsMediaPlayer.currentMedia.duration;
+                            double position = windowsMediaPlayer.controls.currentPosition;
+                            if (duration > 0 && duration - position <= 1.0)
+                            {
+                                windowsMediaPlayer.controls.currentPosition = 0;
+                            }
+                        }
+
                         string currentSong = windowsMediaPlayer.controls.currentItem.sourceURL;
                         if (currentSong != selectedFileName) // next song
                         {
                             selectedFileName = currentSong;
-
-                            songIndex = getSongIndex(currentSong);
-
-                            //gridView.CurrentRow.Selected = false;
-                            //gridView.Rows[songIndex - 1].Selected = false;
-                            // clear other selected rows
-                            gridView.ClearSelection();
-                            gridView.Rows[songIndex].Selected = true;
-
-                            ShowTags(selectedFileName);
-
                             this.Text = "Now Playing - " + Path.GetFileNameWithoutExtension(currentSong) + " | ";
                         }
 
@@ -1193,6 +1213,8 @@ namespace Mp3TagReader.Forms
             try
             {
                 windowsMediaPlayer.controls.previous();
+                // Wait briefly then select the now-playing row in gridView
+                new System.Threading.Timer(_ => this.Invoke((Action)SelectCurrentPlayingRow), null, 350, System.Threading.Timeout.Infinite);
             }
             catch { }
         }
@@ -1208,6 +1230,52 @@ namespace Mp3TagReader.Forms
             try
             {
                 windowsMediaPlayer.controls.next();
+                // Wait briefly then select the now-playing row in gridView
+                new System.Threading.Timer(_ => this.Invoke((Action)SelectCurrentPlayingRow), null, 350, System.Threading.Timeout.Infinite);
+            }
+            catch { }
+        }
+
+        /// <summary>Selects the currently playing song row in the gridView.</summary>
+        private void SelectCurrentPlayingRow()
+        {
+            try
+            {
+                if (windowsMediaPlayer.currentMedia == null) return;
+                string currentSong = windowsMediaPlayer.controls.currentItem.sourceURL;
+                if (string.IsNullOrEmpty(currentSong)) return;
+
+                int foundIndex = -1;
+                foreach (DataGridViewRow row in gridView.Rows)
+                {
+                    if (row.Cells["ColumnPath"].Value != null &&
+                        row.Cells["ColumnPath"].Value.ToString().Equals(currentSong, StringComparison.OrdinalIgnoreCase))
+                    {
+                        foundIndex = row.Index;
+                        break;
+                    }
+                }
+
+                if (foundIndex != -1)
+                {
+                    gridView.ClearSelection();
+                    gridView.Rows[foundIndex].Selected = true;
+                    DataGridViewColumn firstVisibleCol = null;
+                    foreach (DataGridViewColumn col in gridView.Columns)
+                    {
+                        if (col.Visible) { firstVisibleCol = col; break; }
+                    }
+                    if (firstVisibleCol != null)
+                        gridView.CurrentCell = gridView.Rows[foundIndex].Cells[firstVisibleCol.Index];
+                    gridView.FirstDisplayedScrollingRowIndex = foundIndex;
+
+                    // Update state so DisplaySelectedFileInfo won't skip ShowTags
+                    selectedRowIndex = foundIndex;
+                    selectedFileName = currentSong;
+
+                    // Reload artwork + metadata for the now-playing song
+                    ShowTags(currentSong);
+                }
             }
             catch { }
         }
@@ -1255,7 +1323,7 @@ namespace Mp3TagReader.Forms
             if (_chkShuffle.Checked == true)
             {
                 windowsMediaPlayer.settings.setMode("shuffle", true);
-                _chkPlayAll.Checked = true;
+
             }
             else
             {
@@ -1337,15 +1405,57 @@ namespace Mp3TagReader.Forms
 
         private void _btnDisableTimerSong_Click(object sender, EventArgs e)
         {
-            if (timerSong.Enabled == true)
+            try
             {
-                timerSong.Enabled = false;
-                _btnDisableTimerSong.Text = "Enable Auto Find Song";
+                if (windowsMediaPlayer.currentMedia == null) return;
+                string currentSong = windowsMediaPlayer.controls.currentItem.sourceURL;
+                if (string.IsNullOrEmpty(currentSong)) return;
+
+                int foundIndex = -1;
+                foreach (DataGridViewRow row in gridView.Rows)
+                {
+                    if (row.Cells["ColumnPath"].Value != null && row.Cells["ColumnPath"].Value.ToString().Equals(currentSong, StringComparison.OrdinalIgnoreCase))
+                    {
+                        foundIndex = row.Index;
+                        break;
+                    }
+                }
+
+                if (foundIndex != -1)
+                {
+                    gridView.ClearSelection();
+                    gridView.Rows[foundIndex].Selected = true;
+
+                    // Find first visible column to set as current cell
+                    DataGridViewColumn firstVisibleCol = null;
+                    foreach (DataGridViewColumn col in gridView.Columns)
+                    {
+                        if (col.Visible)
+                        {
+                            firstVisibleCol = col;
+                            break;
+                        }
+                    }
+
+                    if (firstVisibleCol != null)
+                    {
+                        gridView.CurrentCell = gridView.Rows[foundIndex].Cells[firstVisibleCol.Index];
+                    }
+
+                    // Scroll the row into view
+                    gridView.FirstDisplayedScrollingRowIndex = foundIndex;
+
+                    selectedFileName = currentSong;
+                    ShowTags(selectedFileName);
+                }
+                else
+                {
+                    MessageBox.Show("Currently playing song is not in the current list.", "Information", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
             }
-            else if (timerSong.Enabled == false)
+            catch (Exception ex)
             {
-                timerSong.Enabled = true;
-                _btnDisableTimerSong.Text = "Disable Auto Find Song";
+                MessageBox.Show("Error finding song: " + ex.Message);
             }
         }
 
@@ -1429,23 +1539,7 @@ namespace Mp3TagReader.Forms
 
 
 
-        private void btnVolumeUp_Click(object sender, EventArgs e)
-        {
-            SendMessageW(this.Handle, WM_APPCOMMAND, this.Handle,
-            (IntPtr)APPCOMMAND_VOLUME_UP);
-        }
 
-        private void btnVolumeDown_Click(object sender, EventArgs e)
-        {
-            SendMessageW(this.Handle, WM_APPCOMMAND, this.Handle,
-            (IntPtr)APPCOMMAND_VOLUME_DOWN);
-        }
-
-        private void btnMute_Click(object sender, EventArgs e)
-        {
-            SendMessageW(this.Handle, WM_APPCOMMAND, this.Handle,
-            (IntPtr)APPCOMMAND_VOLUME_MUTE);
-        }
 
         // right click at grid
         private void toolStripMenuItem1_Click(object sender, EventArgs e)
@@ -1533,12 +1627,22 @@ namespace Mp3TagReader.Forms
                 int secT = (Int32)(t % 60);
                 int minS = (Int32)(s / 60);
                 int secS = (Int32)(s % 60);
-                labelTimerSong.Text = minT + ":" + String.Format("{0:00}", secT) + " / " + minS + ":" + String.Format("{0:00}", secS);
+                
+                // Format: "1:23" on the left, "5:55" on the right
+                labelTimerSong.Text = minT + ":" + String.Format("{0:00}", secT);
+                if (lblTotalTime != null)
+                {
+                    lblTotalTime.Text = minS + ":" + String.Format("{0:00}", secS);
+                }
             }
             else if (now == 0)
             {
                 progressBar.Value = 0;
                 labelTimerSong.Text = "0:00";
+                if (lblTotalTime != null)
+                {
+                    lblTotalTime.Text = "0:00";
+                }
             }
         }
 
@@ -1604,6 +1708,7 @@ namespace Mp3TagReader.Forms
 
         private void gridView_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
+            if (e.RowIndex < 0) return; // Header edit end, ignore
             string afterRenamed = gridView.CurrentCell.Value.ToString();
             if (afterRenamed != beforeRenamed)
             {
@@ -1867,6 +1972,237 @@ namespace Mp3TagReader.Forms
         private void lblGenre_Click(object sender, EventArgs e)
         {
             txtGenre.Text = "EDM";
+        }
+
+        private void InitializeModernLayout()
+        {
+            this.SuspendLayout();
+
+            // Clear size constraints first so we can resize
+            this.MaximumSize = new Size(0, 0);
+            this.MinimumSize = new Size(0, 0);
+
+            // Configure MainForm Size to accommodate split panels with full button texts and extra height
+            this.ClientSize = new Size(1150, 570);
+            this.FormBorderStyle = FormBorderStyle.FixedSingle;
+            this.MaximizeBox = false;
+            this.Text = "Mp3TagReader";
+
+            // Now lock it to the new size
+            this.MinimumSize = this.Size;
+            this.MaximumSize = this.Size;
+
+            // Hide unused controls to prevent them from floating/overlapping
+            _btnCopy.Visible = false;
+            lblSelectedFilePath.Visible = false;
+            _btnOpenFolder.Visible = false;
+
+            btnVolumeDown.Visible = false;
+            btnVolumeUp.Visible = false;
+            btnMute.Visible = false;
+
+            // Reset Dock styles so Bounds are respected
+            treeViewFolder.Dock = DockStyle.None;
+            gridView.Dock = DockStyle.None;
+
+            // Create Left Panel (Explorer & Files Grid)
+            Panel leftPanel = new Panel();
+            leftPanel.Bounds = new Rectangle(0, 24, 680, 546);
+            leftPanel.BackColor = SystemColors.Control;
+            
+            // Create Right Panel (Tag Editor & Player)
+            Panel rightPanel = new Panel();
+            rightPanel.Bounds = new Rectangle(680, 24, 470, 546);
+            rightPanel.BackColor = SystemColors.Control;
+
+            // Add panels to Form
+            this.Controls.Add(leftPanel);
+            this.Controls.Add(rightPanel);
+
+            // Move Left Panel controls
+            leftPanel.Controls.Add(cbbFilePath);
+            leftPanel.Controls.Add(btnReloadList);
+            leftPanel.Controls.Add(btnOpenFolder);
+            leftPanel.Controls.Add(_btnList);
+            leftPanel.Controls.Add(_btnSearch);
+            leftPanel.Controls.Add(_btnUntagged);
+            leftPanel.Controls.Add(_chkAllFiles);
+            leftPanel.Controls.Add(treeViewFolder);
+            leftPanel.Controls.Add(gridView);
+            leftPanel.Controls.Add(_lblCount);
+            leftPanel.Controls.Add(lblResult); // Add lblResult (selected count) to left panel
+
+            // Reposition Left Panel controls with original text names
+            cbbFilePath.Bounds = new Rectangle(10, 10, 220, 21);
+            
+            btnReloadList.Bounds = new Rectangle(240, 9, 80, 23);
+            btnReloadList.Text = "Reload List";
+            
+            btnOpenFolder.Bounds = new Rectangle(325, 9, 85, 23);
+            btnOpenFolder.Text = "Open Folder";
+            
+            _btnList.Bounds = new Rectangle(415, 9, 80, 23);
+            _btnList.Text = "List Files";
+            
+            _btnSearch.Bounds = new Rectangle(500, 9, 90, 23);
+            _btnSearch.Text = "Search OFF";
+            
+            _btnUntagged.Bounds = new Rectangle(595, 9, 75, 23);
+            _btnUntagged.Text = "Untagged";
+            
+            treeViewFolder.Bounds = new Rectangle(10, 42, 160, 460);
+            gridView.Bounds = new Rectangle(175, 42, 495, 460);
+            _chkAllFiles.Bounds = new Rectangle(10, 512, 160, 20);
+            
+            // Put total count on the left, and selected count on the far right of the table
+            _lblCount.Bounds = new Rectangle(175, 512, 150, 20);
+            lblResult.Bounds = new Rectangle(520, 512, 150, 20);
+            lblResult.TextAlign = ContentAlignment.MiddleRight;
+
+            // Move Right Panel controls
+            rightPanel.Controls.Add(picBxArtwork);
+            rightPanel.Controls.Add(btnSetArtwork);
+            rightPanel.Controls.Add(btnUnsetArtwork);
+            rightPanel.Controls.Add(btnSaveArtwork);
+            rightPanel.Controls.Add(lblArtwork);
+            
+            rightPanel.Controls.Add(lblTitle);
+            rightPanel.Controls.Add(txtTitle);
+            rightPanel.Controls.Add(lblArtist);
+            rightPanel.Controls.Add(txtArtist);
+            rightPanel.Controls.Add(lblAlbum);
+            rightPanel.Controls.Add(txtAlbum);
+            rightPanel.Controls.Add(lblGenre);
+            rightPanel.Controls.Add(txtGenre);
+            rightPanel.Controls.Add(lblYear);
+            rightPanel.Controls.Add(txtYear);
+            rightPanel.Controls.Add(lblTrack);
+            rightPanel.Controls.Add(txtTrack);
+            rightPanel.Controls.Add(label1);
+            rightPanel.Controls.Add(txtBitrate);
+            rightPanel.Controls.Add(lblComments);
+            rightPanel.Controls.Add(txtComments);
+            rightPanel.Controls.Add(_btnGetLyrics); // Add _btnGetLyrics back
+            rightPanel.Controls.Add(_btnClearLyrics); // Add _btnClearLyrics back
+            rightPanel.Controls.Add(txtLyrics);
+
+            rightPanel.Controls.Add(_btnSave);
+            rightPanel.Controls.Add(_btnInfo);
+
+            playerGroupBox = new GroupBox();
+            playerGroupBox.Text = "Music Player";
+            rightPanel.Controls.Add(playerGroupBox);
+
+            playerGroupBox.Controls.Add(progressBar);
+            playerGroupBox.Controls.Add(labelTimerSong);
+            playerGroupBox.Controls.Add(_btnPrev);
+            playerGroupBox.Controls.Add(_btnPlayAll);
+            playerGroupBox.Controls.Add(_btnNext);
+            playerGroupBox.Controls.Add(_btnStop);
+
+            playerGroupBox.Controls.Add(_chkShuffle);
+            playerGroupBox.Controls.Add(_chkReplay);
+            playerGroupBox.Controls.Add(_btnDisableTimerSong);
+
+            // Reposition Right Panel controls (wider inspector spacing)
+            picBxArtwork.Bounds = new Rectangle(15, 10, 100, 100);
+            picBxArtwork.SizeMode = PictureBoxSizeMode.Zoom;
+            
+            btnSetArtwork.Bounds = new Rectangle(125, 10, 100, 26);
+            btnUnsetArtwork.Bounds = new Rectangle(125, 42, 100, 26);
+            btnSaveArtwork.Bounds = new Rectangle(125, 74, 100, 26);
+            lblArtwork.Bounds = new Rectangle(235, 10, 220, 90);
+            lblArtwork.AutoSize = false;
+            
+            lblTitle.Bounds = new Rectangle(15, 122, 50, 15);
+            txtTitle.Bounds = new Rectangle(75, 119, 380, 21);
+            
+            lblArtist.Bounds = new Rectangle(15, 149, 50, 15);
+            txtArtist.Bounds = new Rectangle(75, 146, 380, 21);
+            
+            lblAlbum.Bounds = new Rectangle(15, 176, 50, 15);
+            txtAlbum.Bounds = new Rectangle(75, 173, 380, 21);
+            
+            lblGenre.Bounds = new Rectangle(15, 203, 50, 15);
+            txtGenre.Bounds = new Rectangle(75, 200, 150, 21);
+            lblYear.Bounds = new Rectangle(245, 203, 50, 15);
+            txtYear.Bounds = new Rectangle(305, 200, 150, 21);
+            
+            lblTrack.Bounds = new Rectangle(15, 230, 50, 15);
+            txtTrack.Bounds = new Rectangle(75, 227, 150, 21);
+            label1.Bounds = new Rectangle(245, 230, 50, 15);
+            txtBitrate.Bounds = new Rectangle(305, 227, 150, 21);
+            
+            lblComments.Bounds = new Rectangle(15, 257, 50, 15);
+            txtComments.Bounds = new Rectangle(75, 254, 380, 21);
+            
+            // Lyrics buttons row and lyrics text area
+            _btnGetLyrics.Bounds = new Rectangle(15, 282, 100, 23);
+            _btnGetLyrics.Text = "LyricsURL";
+            _btnClearLyrics.Bounds = new Rectangle(120, 282, 30, 23);
+            _btnClearLyrics.Text = "X";
+            
+            // Put Full info button on the far right of the lyrics row (red circle area)
+            _btnInfo.Bounds = new Rectangle(305, 282, 150, 23);
+            _btnInfo.Text = "Full info";
+            
+            txtLyrics.Bounds = new Rectangle(15, 310, 440, 50);
+            txtLyrics.Multiline = true;
+            txtLyrics.ScrollBars = ScrollBars.Vertical;
+            
+            // Save Tag button directly below lyrics area
+            _btnSave.Bounds = new Rectangle(15, 365, 440, 32);
+            _btnSave.Text = "Save Tag";
+            
+            // Player GroupBox container
+            playerGroupBox.Bounds = new Rectangle(15, 405, 440, 125);
+
+            // Playback controls row at top of GroupBox:
+            // Layout: [⏮ Prev] [▶ Play] [⏭ Next] [⏹ Stop]   [⧁ Shuffle][↺ Replay]
+            _btnPrev.Bounds = new Rectangle(75, 20, 42, 34);
+            _btnPrev.Text = "\u23EE";
+            _btnPlayAll.Bounds = new Rectangle(121, 16, 50, 40);
+            _btnPlayAll.Text = "\u25B6";
+            _btnNext.Bounds = new Rectangle(175, 20, 42, 34);
+            _btnNext.Text = "\u23ED";
+            _btnStop.Bounds = new Rectangle(221, 20, 42, 34);
+            _btnStop.Text = "\u23F9";
+
+            // Shuffle and Replay flush to right edge of GroupBox (inner width ~436px)
+            _chkShuffle.Appearance = Appearance.Button;
+            _chkShuffle.TextAlign = ContentAlignment.MiddleCenter;
+            _chkShuffle.Bounds = new Rectangle(328, 20, 42, 34);
+            _chkShuffle.Text = "\u29C1";
+
+            _chkReplay.Appearance = Appearance.Button;
+            _chkReplay.TextAlign = ContentAlignment.MiddleCenter;
+            _chkReplay.Bounds = new Rectangle(374, 20, 42, 34);
+            _chkReplay.Text = "\u21BA";
+            
+            // Progress Bar seeker below controls
+            progressBar.Bounds = new Rectangle(75, 66, 280, 10);
+            labelTimerSong.Bounds = new Rectangle(10, 64, 62, 15);
+            labelTimerSong.TextAlign = ContentAlignment.MiddleLeft;
+
+            lblTotalTime = new Label();
+            lblTotalTime.Name = "lblTotalTime";
+            lblTotalTime.Bounds = new Rectangle(360, 64, 60, 15);
+            lblTotalTime.TextAlign = ContentAlignment.MiddleRight;
+            lblTotalTime.Text = "0:00";
+            if (!playerGroupBox.Controls.ContainsKey("lblTotalTime"))
+            {
+                playerGroupBox.Controls.Add(lblTotalTime);
+            }
+            
+            // Bottom row: Find Playing Song button
+            _btnDisableTimerSong.Bounds = new Rectangle(10, 92, 420, 23);
+            _btnDisableTimerSong.Text = "\u27A4 Find Playing Song";
+
+            // Ensure Menu bar remains on top
+            menuStrip1.BringToFront();
+
+            this.ResumeLayout(true);
+            this.PerformLayout();
         }
     }
 }
