@@ -113,6 +113,12 @@
     <Compile Include="Forms\YoutubeDownloadForm.Designer.cs">
       <DependentUpon>YoutubeDownloadForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\AttributeChangerForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\AttributeChangerForm.Designer.cs">
+      <DependentUpon>AttributeChangerForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Helpers\Manipulator.cs" />
     <Compile Include="Models\Mp3Info.cs" />
     <Compile Include="Helpers\MySortableBindingList.cs" />
