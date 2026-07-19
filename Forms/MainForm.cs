@@ -115,12 +115,26 @@ namespace Mp3TagReader.Forms
         private void reloadFolderList(String folder)
         {
             cbbFilePath.Items.Clear();
-            string[] lines = System.IO.File.ReadAllLines(folder);
-            foreach (String line in lines)
+            if (System.IO.File.Exists(folder))
             {
-                cbbFilePath.Items.Add(line);
+                try
+                {
+                    string[] lines = System.IO.File.ReadAllLines(folder);
+                    foreach (String line in lines)
+                    {
+                        if (cbbFilePath.Items.Count < 10)
+                        {
+                            cbbFilePath.Items.Add(line);
+                        }
+                    }
+                }
+                catch { }
             }
-            cbbFilePath.SelectedIndex = 0;
+
+            if (cbbFilePath.Items.Count > 0)
+            {
+                cbbFilePath.SelectedIndex = 0;
+            }
         }
 
         private void loadTree()
@@ -166,6 +180,53 @@ namespace Mp3TagReader.Forms
 
         private void listFiles(String[] searchPattern, String filePath, String searchString)
         {
+            // Update directory path history in cbbFilePath
+            if (!string.IsNullOrEmpty(filePath) && Directory.Exists(filePath))
+            {
+                string normPath = Path.GetFullPath(filePath);
+                
+                // Temporarily disable index changed event if any, or just modify items
+                int existingIdx = -1;
+                for (int idx = 0; idx < cbbFilePath.Items.Count; idx++)
+                {
+                    if (Path.GetFullPath(cbbFilePath.Items[idx].ToString()).Equals(normPath, StringComparison.OrdinalIgnoreCase))
+                    {
+                        existingIdx = idx;
+                        break;
+                    }
+                }
+
+                if (existingIdx != 0)
+                {
+                    if (existingIdx > 0)
+                    {
+                        cbbFilePath.Items.RemoveAt(existingIdx);
+                    }
+                    
+                    cbbFilePath.Items.Insert(0, filePath);
+                    
+                    // Limit to 10 items
+                    while (cbbFilePath.Items.Count > 10)
+                    {
+                        cbbFilePath.Items.RemoveAt(cbbFilePath.Items.Count - 1);
+                    }
+                    
+                    cbbFilePath.SelectedIndex = 0;
+
+                    // Save history to folderList.txt
+                    try
+                    {
+                        List<string> lines = new List<string>();
+                        foreach (var item in cbbFilePath.Items)
+                        {
+                            lines.Add(item.ToString());
+                        }
+                        System.IO.File.WriteAllLines(folderListPath, lines.ToArray());
+                    }
+                    catch { }
+                }
+            }
+
             DirectoryInfo di = new DirectoryInfo(filePath);
             foreach (String s in searchPattern)
             {
@@ -1915,7 +1976,10 @@ namespace Mp3TagReader.Forms
 
         private void btnOpenFolder_Click(object sender, EventArgs e)
         {
-            System.Diagnostics.Process.Start("folderList.txt");
+            if (System.IO.File.Exists(folderListPath))
+            {
+                System.Diagnostics.Process.Start(folderListPath);
+            }
         }
 
         private void btnReloadList_Click(object sender, EventArgs e)
@@ -2001,6 +2065,9 @@ namespace Mp3TagReader.Forms
             btnVolumeUp.Visible = false;
             btnMute.Visible = false;
 
+            btnReloadList.Visible = false;
+            btnOpenFolder.Visible = false;
+
             // Reset Dock styles so Bounds are respected
             treeViewFolder.Dock = DockStyle.None;
             gridView.Dock = DockStyle.None;
@@ -2032,22 +2099,16 @@ namespace Mp3TagReader.Forms
             leftPanel.Controls.Add(_lblCount);
             leftPanel.Controls.Add(lblResult); // Add lblResult (selected count) to left panel
 
-            // Reposition Left Panel controls with original text names
-            cbbFilePath.Bounds = new Rectangle(10, 10, 220, 21);
+            // Reposition Left Panel controls: Expand cbbFilePath, hide Reload/Open, shift others left
+            cbbFilePath.Bounds = new Rectangle(10, 10, 200, 21);
             
-            btnReloadList.Bounds = new Rectangle(240, 9, 80, 23);
-            btnReloadList.Text = "Reload List";
-            
-            btnOpenFolder.Bounds = new Rectangle(325, 9, 85, 23);
-            btnOpenFolder.Text = "Open Folder";
-            
-            _btnList.Bounds = new Rectangle(415, 9, 80, 23);
+            _btnList.Bounds = new Rectangle(330, 9, 100, 23);
             _btnList.Text = "List Files";
             
-            _btnSearch.Bounds = new Rectangle(500, 9, 90, 23);
+            _btnSearch.Bounds = new Rectangle(440, 9, 110, 23);
             _btnSearch.Text = "Search OFF";
             
-            _btnUntagged.Bounds = new Rectangle(595, 9, 75, 23);
+            _btnUntagged.Bounds = new Rectangle(560, 9, 110, 23);
             _btnUntagged.Text = "Untagged";
             
             treeViewFolder.Bounds = new Rectangle(10, 42, 160, 460);
@@ -2150,8 +2211,8 @@ namespace Mp3TagReader.Forms
             txtLyrics.Multiline = true;
             txtLyrics.ScrollBars = ScrollBars.Vertical;
             
-            // Save Tag button directly below lyrics area
-            _btnSave.Bounds = new Rectangle(15, 365, 440, 32);
+            // Save Tag button directly below lyrics area: shrunk to half (220px) and centered (X=125) relative to 470px width
+            _btnSave.Bounds = new Rectangle(125, 365, 220, 32);
             _btnSave.Text = "Save Tag";
             
             // Player GroupBox container
