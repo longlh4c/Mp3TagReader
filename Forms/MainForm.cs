@@ -1880,6 +1880,20 @@ namespace Mp3TagReader.Forms
             }
         }
 
+        private void subtitleDownloaderToolStripMenuItem_Click(object sender, EventArgs e)
+        {
+            string initialFile = string.Empty;
+            if (gridView.CurrentRow != null && gridView.CurrentRow.Cells["ColumnPath"].Value != null)
+            {
+                initialFile = gridView.CurrentRow.Cells["ColumnPath"].Value.ToString();
+            }
+
+            using (SubtitleDownloaderForm downloader = new SubtitleDownloaderForm(initialFile))
+            {
+                downloader.ShowDialog(this);
+            }
+        }
+
 
 
         private void cbbFilePath_TextChanged(object sender, EventArgs e)

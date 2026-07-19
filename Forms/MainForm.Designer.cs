@@ -62,6 +62,7 @@ namespace Mp3TagReader.Forms
             this.downloadMP3FromYouTubeToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.exitToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.attributeChangerToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
+            this.subtitleDownloaderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this._btnGetLyrics = new System.Windows.Forms.Button();
             this._btnInfo = new System.Windows.Forms.Button();
             this.timerSong = new System.Windows.Forms.Timer(this.components);
@@ -376,6 +377,7 @@ namespace Mp3TagReader.Forms
             this.fixTrackNumberToolStripMenuItem,
             this.downloadMP3FromYouTubeToolStripMenuItem,
             this.attributeChangerToolStripMenuItem,
+            this.subtitleDownloaderToolStripMenuItem,
             this.exitToolStripMenuItem});
             this.menuToolStripMenuItem.Name = "menuToolStripMenuItem";
             this.menuToolStripMenuItem.Size = new System.Drawing.Size(50, 20);
@@ -408,6 +410,13 @@ namespace Mp3TagReader.Forms
             this.attributeChangerToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
             this.attributeChangerToolStripMenuItem.Text = "Attribute Changer...";
             this.attributeChangerToolStripMenuItem.Click += new System.EventHandler(this.attributeChangerToolStripMenuItem_Click);
+            // 
+            // subtitleDownloaderToolStripMenuItem
+            // 
+            this.subtitleDownloaderToolStripMenuItem.Name = "subtitleDownloaderToolStripMenuItem";
+            this.subtitleDownloaderToolStripMenuItem.Size = new System.Drawing.Size(224, 22);
+            this.subtitleDownloaderToolStripMenuItem.Text = "Download Movie Subtitles...";
+            this.subtitleDownloaderToolStripMenuItem.Click += new System.EventHandler(this.subtitleDownloaderToolStripMenuItem_Click);
             // 
             // _btnGetLyrics
             // 
@@ -936,6 +945,7 @@ namespace Mp3TagReader.Forms
         private System.Windows.Forms.ToolStripMenuItem convertToMp3ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem downloadMP3FromYouTubeToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem attributeChangerToolStripMenuItem;
+        private System.Windows.Forms.ToolStripMenuItem subtitleDownloaderToolStripMenuItem;
     }
 }
 

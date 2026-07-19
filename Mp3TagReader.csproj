@@ -83,6 +83,7 @@
       <DependentUpon>ArtworkViewer.cs</DependentUpon>
     </Compile>
     <Compile Include="Services\FileExplorer.cs" />
+    <Compile Include="Services\SubtitleService.cs" />
     <Compile Include="Forms\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
@@ -119,8 +120,15 @@
     <Compile Include="Forms\AttributeChangerForm.Designer.cs">
       <DependentUpon>AttributeChangerForm.cs</DependentUpon>
     </Compile>
+    <Compile Include="Forms\SubtitleDownloaderForm.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="Forms\SubtitleDownloaderForm.Designer.cs">
+      <DependentUpon>SubtitleDownloaderForm.cs</DependentUpon>
+    </Compile>
     <Compile Include="Helpers\Manipulator.cs" />
     <Compile Include="Models\Mp3Info.cs" />
+    <Compile Include="Models\SubdlSearchResult.cs" />
     <Compile Include="Helpers\MySortableBindingList.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
