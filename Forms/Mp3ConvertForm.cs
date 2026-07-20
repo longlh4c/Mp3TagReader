@@ -10,9 +10,8 @@ namespace Mp3TagReader.Forms
     public partial class Mp3ConvertForm : Form
     {
         private string sourceFilePath;
-        private double totalDurationSeconds = 0;
-        private Process ffmpegProcess;
         private Thread conversionThread;
+        private readonly Services.AudioConverterService _audioConverterService = new Services.AudioConverterService();
 
         public Mp3ConvertForm(string filePath)
         {
@@ -43,19 +42,6 @@ namespace Mp3TagReader.Forms
             cbbBitrate.Items.Add("256 kbps");
             cbbBitrate.Items.Add("320 kbps");
             cbbBitrate.SelectedIndex = 0; // Default to 128 kbps
-
-            // Get total duration using TagLib
-            try
-            {
-                using (var file = TagLib.File.Create(sourceFilePath))
-                {
-                    totalDurationSeconds = file.Properties.Duration.TotalSeconds;
-                }
-            }
-            catch
-            {
-                totalDurationSeconds = 0;
-            }
         }
 
         private void btnBrowse_Click(object sender, EventArgs e)
@@ -114,103 +100,37 @@ namespace Mp3TagReader.Forms
 
         private void RunConversion(string outputFile, string bitrate)
         {
-            try
-            {
-                string ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Libs", "ffmpeg.exe");
-                if (!System.IO.File.Exists(ffmpegPath))
-                {
-                    // Check direct root Libs folder if base directory is different (e.g. in development)
-                    ffmpegPath = Path.Combine(Directory.GetCurrentDirectory(), "Libs", "ffmpeg.exe");
-                }
-
-                if (!System.IO.File.Exists(ffmpegPath))
+            _audioConverterService.ConvertToMp3(
+                sourceFilePath,
+                outputFile,
+                bitrate,
+                (pct, status) =>
                 {
                     this.BeginInvoke((MethodInvoker)delegate
                     {
-                        MessageBox.Show("ffmpeg.exe not found in Libs folder.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
-                        ResetUI();
+                        progressBar.Value = pct;
+                        lblStatus.Text = status;
                     });
-                    return;
-                }
-
-                ProcessStartInfo startInfo = new ProcessStartInfo
+                },
+                (exitCode, message) =>
                 {
-                    FileName = ffmpegPath,
-                    Arguments = string.Format("-y -i \"{0}\" -codec:a libmp3lame -b:a {1}k \"{2}\"", sourceFilePath, bitrate, outputFile),
-                    UseShellExecute = false,
-                    CreateNoWindow = true,
-                    RedirectStandardError = true // ffmpeg logs progress to stderr
-                };
-
-                ffmpegProcess = new Process { StartInfo = startInfo };
-                ffmpegProcess.Start();
-
-                using (StreamReader reader = ffmpegProcess.StandardError)
-                {
-                    string line;
-                    while ((line = reader.ReadLine()) != null)
+                    this.BeginInvoke((MethodInvoker)delegate
                     {
-                        ParseFfmpegProgress(line);
-                    }
-                }
-
-                ffmpegProcess.WaitForExit();
-                int exitCode = ffmpegProcess.ExitCode;
-
-                this.BeginInvoke((MethodInvoker)delegate
-                {
-                    if (exitCode == 0)
-                    {
-                        progressBar.Value = 100;
-                        lblStatus.Text = "Conversion completed successfully!";
-                        btnCancel.Text = "Close";
-                        MessageBox.Show("Conversion successful!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
-                    }
-                    else
-                    {
-                        lblStatus.Text = "Conversion failed.";
-                        ResetUI();
-                    }
-                });
-            }
-            catch (Exception ex)
-            {
-                this.BeginInvoke((MethodInvoker)delegate
-                {
-                    lblStatus.Text = "Error: " + ex.Message;
-                    ResetUI();
-                });
-            }
-        }
-
-        private void ParseFfmpegProgress(string line)
-        {
-            if (totalDurationSeconds <= 0) return;
-
-            // Look for "time=00:00:17.51"
-            int timeIdx = line.IndexOf("time=");
-            if (timeIdx >= 0)
-            {
-                try
-                {
-                    string timeStr = line.Substring(timeIdx + 5).Split(' ')[0].Trim();
-                    TimeSpan elapsed;
-                    if (TimeSpan.TryParse(timeStr, out elapsed))
-                    {
-                        double elapsedSeconds = elapsed.TotalSeconds;
-                        int pct = (int)((elapsedSeconds / totalDurationSeconds) * 100);
-                        if (pct >= 0 && pct <= 100)
+                        if (exitCode == 0)
                         {
-                            this.BeginInvoke((MethodInvoker)delegate
-                            {
-                                progressBar.Value = pct;
-                                lblStatus.Text = string.Format("Converting... {0}%", pct);
-                            });
+                            progressBar.Value = 100;
+                            lblStatus.Text = message;
+                            btnCancel.Text = "Close";
+                            MessageBox.Show("Conversion successful!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
-                    }
+                        else
+                        {
+                            lblStatus.Text = "Conversion failed: " + message;
+                            ResetUI();
+                        }
+                    });
                 }
-                catch { }
-            }
+            );
         }
 
         private void ResetUI()
@@ -240,14 +160,7 @@ namespace Mp3TagReader.Forms
 
         private void AbortConversion()
         {
-            try
-            {
-                if (ffmpegProcess != null && !ffmpegProcess.HasExited)
-                {
-                    ffmpegProcess.Kill();
-                }
-            }
-            catch { }
+            _audioConverterService.Abort();
         }
 
         private void Mp3ConvertForm_FormClosing(object sender, FormClosingEventArgs e)

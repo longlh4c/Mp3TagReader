@@ -84,6 +84,8 @@
     </Compile>
     <Compile Include="Services\FileExplorer.cs" />
     <Compile Include="Services\SubtitleService.cs" />
+    <Compile Include="Services\AudioConverterService.cs" />
+    <Compile Include="Services\YoutubeDownloadService.cs" />
     <Compile Include="Forms\MainForm.cs">
       <SubType>Form</SubType>
     </Compile>
