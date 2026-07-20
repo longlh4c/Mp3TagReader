@@ -621,7 +621,7 @@ namespace Mp3TagReader.Forms
 
         private void DisplaySelectedFileInfo()
         {
-            if (gridView.CurrentRow == null) return;
+            if (gridView.CurrentRow == null || gridView.CurrentRow.Index < 0) return;
             if (gridView.CurrentRow.Cells["ColumnPath"].Value == null) return;
 
             if (gridView.CurrentRow.Index != selectedRowIndex || gridView.CurrentRow.Index == 0)
@@ -636,7 +636,7 @@ namespace Mp3TagReader.Forms
 
         private void DisplayMultiSelectedFilesInfo()
         {
-            if (gridView.CurrentRow == null) return;
+            if (gridView.CurrentRow == null || gridView.CurrentRow.Index < 0) return;
             if (gridView.CurrentRow.Cells["ColumnPath"].Value == null) return;
             string selectedPath = gridView.CurrentRow.Cells["ColumnPath"].Value.ToString();
             if (isFolder() || isVideo())
@@ -680,7 +680,18 @@ namespace Mp3TagReader.Forms
                     //mciSendString("open \"" + selectedFileName + "\" type mpegvideo alias MediaFile", null, 0, IntPtr.Zero);
                     //mciSendString("play MediaFile" + playMode, null, 0, IntPtr.Zero);
 
-                    if (windowsMediaPlayer.playState == WMPLib.WMPPlayState.wmppsPlaying)
+                    string currentUrl = (windowsMediaPlayer.currentMedia != null) ? windowsMediaPlayer.currentMedia.sourceURL : string.Empty;
+                    bool isSameFile = false;
+                    try
+                    {
+                        if (!string.IsNullOrEmpty(currentUrl) && !string.IsNullOrEmpty(selectedFileName))
+                        {
+                            isSameFile = string.Compare(Path.GetFullPath(currentUrl), Path.GetFullPath(selectedFileName), StringComparison.OrdinalIgnoreCase) == 0;
+                        }
+                    }
+                    catch { }
+
+                    if (windowsMediaPlayer.playState == WMPLib.WMPPlayState.wmppsPlaying && isSameFile)
                     {
                         if (replayState == 1) // repeat playlist
                         {
@@ -698,6 +709,12 @@ namespace Mp3TagReader.Forms
                     }
                     else
                     {
+                        // Stop current playback before rebuilding playlist
+                        try
+                        {
+                            windowsMediaPlayer.controls.stop();
+                        }
+                        catch { }
                         string myPlaylist = "MyPlayList";
 
                         plItems = windowsMediaPlayer.playlistCollection.getByName(myPlaylist);
@@ -953,7 +970,7 @@ namespace Mp3TagReader.Forms
         private void gridView_CellDoubleClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return; // Header double-clicked, ignore
-            // open folder
+            // open folder or play song
             try
             {
                 selectedFileName = gridView.CurrentRow.Cells["ColumnPath"].Value.ToString();
@@ -969,24 +986,34 @@ namespace Mp3TagReader.Forms
                     gridView.DataSource = listMp3Infos;
                     _lblCount.Text = gridView.RowCount.ToString() + " results";
                 }
+                else
+                {
+                    PlaySelectedMp3Files();
+                }
             }
             catch (Exception) { }
         }
 
         private bool isFolder()
         {
+            if (gridView.CurrentRow == null || gridView.CurrentRow.Index < 0) return false;
+            if (gridView.CurrentRow.Cells["ColumnPath"].Value == null) return false;
             string selectedPath = gridView.CurrentRow.Cells["ColumnPath"].Value.ToString();
             return Manipulator.IsFolder(selectedPath);
         }
 
         private bool isVideo()
         {
+            if (gridView.CurrentRow == null || gridView.CurrentRow.Index < 0) return false;
+            if (gridView.CurrentRow.Cells["ColumnPath"].Value == null) return false;
             string selectedPath = gridView.CurrentRow.Cells["ColumnPath"].Value.ToString();
             return Manipulator.IsVideoFile(selectedPath);
         }
 
         private string folderOf(string filePath) // return folder of the selected file
         {
+            if (gridView.CurrentRow == null || gridView.CurrentRow.Index < 0) return string.Empty;
+            if (gridView.CurrentRow.Cells["ColumnPath"].Value == null) return string.Empty;
             selectedFileName = gridView.CurrentRow.Cells["ColumnPath"].Value.ToString();
             return Path.GetDirectoryName(selectedFileName);
         }
