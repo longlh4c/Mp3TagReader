@@ -2197,10 +2197,8 @@ namespace Mp3TagReader.Forms
             gridView.Bounds = new Rectangle(175, 42, 495, 460);
             _chkAllFiles.Bounds = new Rectangle(10, 512, 160, 20);
             
-            // Put total count on the left, and selected count on the far right of the table
+            // Put total count on the left of the table
             _lblCount.Bounds = new Rectangle(175, 512, 150, 20);
-            lblResult.Bounds = new Rectangle(520, 512, 150, 20);
-            lblResult.TextAlign = ContentAlignment.MiddleRight;
 
             // Move Right Panel controls
             rightPanel.Controls.Add(picBxArtwork);
@@ -2231,6 +2229,7 @@ namespace Mp3TagReader.Forms
 
             rightPanel.Controls.Add(_btnSave);
             rightPanel.Controls.Add(_btnInfo);
+            rightPanel.Controls.Add(lblResult);
 
             playerGroupBox = new GroupBox();
             playerGroupBox.Text = "Music Player";
@@ -2296,6 +2295,11 @@ namespace Mp3TagReader.Forms
             // Save Tag button directly below lyrics area: shrunk to half (220px) and centered (X=125) relative to 470px width
             _btnSave.Bounds = new Rectangle(125, 365, 220, 32);
             _btnSave.Text = "Save Tag";
+
+            // Put selected count to the left of the Save Tag button
+            lblResult.AutoSize = false;
+            lblResult.Bounds = new Rectangle(15, 365, 105, 32);
+            lblResult.TextAlign = ContentAlignment.MiddleLeft;
             
             // Player GroupBox container
             playerGroupBox.Bounds = new Rectangle(15, 405, 440, 125);
