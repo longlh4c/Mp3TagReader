@@ -11,6 +11,7 @@ namespace Mp3TagReader.Forms
     {
         private string sourceFilePath;
         private Thread conversionThread;
+        private bool isConverting = false;
         private readonly Services.AudioConverterService _audioConverterService = new Services.AudioConverterService();
 
         public Mp3ConvertForm(string filePath)
@@ -91,6 +92,7 @@ namespace Mp3TagReader.Forms
 
             lblStatus.Text = "Starting conversion...";
             progressBar.Value = 0;
+            isConverting = true;
 
             // Start conversion in background thread
             conversionThread = new Thread(() => RunConversion(output, selectedBitrate));
@@ -106,7 +108,7 @@ namespace Mp3TagReader.Forms
                 bitrate,
                 (pct, status) =>
                 {
-                    this.BeginInvoke((MethodInvoker)delegate
+                    SafeBeginInvoke(delegate
                     {
                         progressBar.Value = pct;
                         lblStatus.Text = status;
@@ -114,13 +116,14 @@ namespace Mp3TagReader.Forms
                 },
                 (exitCode, message) =>
                 {
-                    this.BeginInvoke((MethodInvoker)delegate
+                    SafeBeginInvoke(delegate
                     {
+                        isConverting = false;
                         if (exitCode == 0)
                         {
                             progressBar.Value = 100;
                             lblStatus.Text = message;
-                            btnCancel.Text = "Close";
+                            ResetUI();
                             MessageBox.Show("Conversion successful!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                         }
                         else
@@ -131,6 +134,19 @@ namespace Mp3TagReader.Forms
                     });
                 }
             );
+        }
+
+        // the worker thread may finish after the form was closed: never let that crash the application
+        private void SafeBeginInvoke(MethodInvoker action)
+        {
+            try
+            {
+                if (!this.IsDisposed && this.IsHandleCreated)
+                {
+                    this.BeginInvoke(action);
+                }
+            }
+            catch (InvalidOperationException) { }
         }
 
         private void ResetUI()
@@ -144,28 +160,19 @@ namespace Mp3TagReader.Forms
 
         private void btnCancel_Click(object sender, EventArgs e)
         {
-            if (btnConvert.Enabled == false) // Conversion is active
-            {
-                if (MessageBox.Show("Abort conversion?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                {
-                    AbortConversion();
-                    this.Close();
-                }
-            }
-            else
-            {
-                this.Close();
-            }
+            // FormClosing asks for confirmation while a conversion is running
+            this.Close();
         }
 
         private void AbortConversion()
         {
+            isConverting = false;
             _audioConverterService.Abort();
         }
 
         private void Mp3ConvertForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            if (btnConvert.Enabled == false)
+            if (isConverting)
             {
                 if (MessageBox.Show("Abort conversion?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
                 {

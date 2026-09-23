@@ -1,57 +1,88 @@
-using System.Text;
+using System;
+using System.Collections.Generic;
+using System.IO;
 
 namespace Mp3TagReader.Helpers
 {
     public class Manipulator
     {
+        private static readonly string[] audioExtensions = { ".mp3", ".wma", ".flac", ".m4a" };
+        private static readonly string[] videoExtensions = { ".mp4", ".mpg", ".flv", ".wmv", ".avi" };
+        private static readonly string[] imageExtensions = { ".jpg", ".jpeg", ".png", ".bmp", ".gif" };
+
         public static string ArrayToString(string[] strArray, string strDelimeter)
         {
             if (strArray == null) return string.Empty;
-            StringBuilder builder = new StringBuilder();
-            foreach (string value in strArray)
+            return string.Join(strDelimeter, strArray);
+        }
+
+        // reverse of ArrayToString: "A, B" -> { "A", "B" }, empty text -> empty array
+        public static string[] StringToArray(string text, char delimeter)
+        {
+            List<string> values = new List<string>();
+            if (!string.IsNullOrEmpty(text))
             {
-                builder.Append(value);
-                if (strArray.Length > 1)
+                foreach (string value in text.Split(delimeter))
                 {
-                    builder.Append(strDelimeter);
+                    string trimmed = value.Trim();
+                    if (trimmed.Length > 0)
+                    {
+                        values.Add(trimmed);
+                    }
                 }
             }
-            return builder.ToString();
+            return values.ToArray();
         }
 
         public static bool IsAudioFile(string fi)
         {
-            if (fi.EndsWith("mp3") || fi.EndsWith("wma") || fi.EndsWith("flac") || fi.EndsWith("m4a"))
-            {
-                return true;
-            }
-            else
-                return false;
+            return HasExtension(fi, audioExtensions);
         }
 
         public static bool IsVideoFile(string fi)
         {
-            if (fi.EndsWith("mp4") || fi.EndsWith("mpg") ||
-                    fi.EndsWith("flv") || fi.EndsWith("wmv") ||
-                    fi.EndsWith("avi") || fi.EndsWith("flac"))
-            {
-                return true;
-            }
-            else
-                return false;
+            return HasExtension(fi, videoExtensions);
+        }
+
+        public static bool IsImageFile(string fi)
+        {
+            return HasExtension(fi, imageExtensions);
         }
 
         public static bool IsFolder(string selectedPath)
         {
-            if (!selectedPath.EndsWith("mp3") && !selectedPath.EndsWith("wma") && !selectedPath.EndsWith("m4a")
-                && !selectedPath.EndsWith("mp4") && !selectedPath.EndsWith("avi")
-                && !selectedPath.EndsWith("flv") && !selectedPath.EndsWith("wmv")
-                && !selectedPath.EndsWith("mpg") && !selectedPath.EndsWith("flac"))
+            return !string.IsNullOrEmpty(selectedPath) && Directory.Exists(selectedPath);
+        }
+
+        public static string GetImageMimeType(string imagePath)
+        {
+            string ext = GetExtension(imagePath);
+            switch (ext)
             {
-                return true;
+                case ".png": return "image/png";
+                case ".bmp": return "image/bmp";
+                case ".gif": return System.Net.Mime.MediaTypeNames.Image.Gif;
+                default: return System.Net.Mime.MediaTypeNames.Image.Jpeg;
             }
-            else
-                return false;
+        }
+
+        private static bool HasExtension(string path, string[] extensions)
+        {
+            string ext = GetExtension(path);
+            return ext.Length > 0 && Array.IndexOf(extensions, ext) >= 0;
+        }
+
+        private static string GetExtension(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return string.Empty;
+            try
+            {
+                return Path.GetExtension(path).ToLowerInvariant();
+            }
+            catch (ArgumentException)
+            {
+                return string.Empty;
+            }
         }
     }
 }

@@ -20,22 +20,30 @@ namespace Mp3TagReader.Forms
         private static string filePath = string.Empty;
         private static string selectedFileName = string.Empty;
         private static string temp = string.Empty;
-        private static int selectedRowIndex = 0;
         private static List<string> listSelectedFiles = new List<string>();
         private MySortableBindingList<Mp3Info> listMp3Infos = new MySortableBindingList<Mp3Info>();
         String[] allPatterns = { "*" };
         String[] audioPatterns = { "*.mp3", "*.wma", "*.flac", "*.m4a" };
         String[] videoPatterns = { "*.mp4", "*.avi", "*.mpg", "*.flv", "*.wmv" };
 
-        private FileInfo[] allFiles = null;
-        private FileInfo[] mp3Files = null;
-        private FileInfo[] wmaFiles = null;
-
         private String folderListPath = "folderList.txt";
 
-        private WMPLib.IWMPPlaylist pl;
-        private WMPLib.IWMPPlaylistArray plItems;
-        private WMPLib.WindowsMediaPlayer windowsMediaPlayer = new WMPLib.WindowsMediaPlayer();
+        // true while the code itself changes cbbFilePath, so cbbFilePath_TextChanged won't start a search
+        private bool suppressFolderSearch = false;
+
+        // plays the songs with the bundled Libs\ffplay.exe; null when ffplay.exe is missing
+        private ITrackPlayer player = null;
+
+        // song currently loaded in the player; kept separate from selectedFileName (the file shown in the tag editor)
+        private string nowPlayingFile = string.Empty;
+        private double nowPlayingDuration = 0;
+
+        // playlist managed by the app: the audio files of the list and the order they are played in (shuffled or not)
+        private List<string> playlist = new List<string>();
+        private List<int> playOrder = new List<int>();
+        private int orderPos = -1;
+        private int consecutiveFailures = 0;
+        private readonly Random random = new Random();
 
         // 0: Off, 1: Repeat Playlist (Loop), 2: Repeat One
         private int replayState = 0;
@@ -56,18 +64,47 @@ namespace Mp3TagReader.Forms
             switch (newState)
             {
                 case PlaybackState.Playing:
-                    _btnPlayAll.Text = "\u23F8"; // ⏸ icon only
+                    _btnPlayAll.Text = "⏸"; // ⏸ icon only
                     timerNowPlayingText.Enabled = true;
                     break;
                 case PlaybackState.Paused:
-                    _btnPlayAll.Text = "\u25B6"; // ▶ icon only
+                    _btnPlayAll.Text = "▶"; // ▶ icon only
                     timerNowPlayingText.Enabled = false;
                     break;
                 case PlaybackState.Stopped:
-                    _btnPlayAll.Text = "\u25B6"; // ▶ icon only
+                    _btnPlayAll.Text = "▶"; // ▶ icon only
                     timerNowPlayingText.Enabled = false;
                     break;
             }
+            UpdatePlayerButtons();
+        }
+
+        // Play needs a selected audio file (or a song already loaded); Prev / Next / Stop / seek need a loaded song
+        private void UpdatePlayerButtons()
+        {
+            bool hasPlayer = player != null;
+            bool active = currentPlaybackState != PlaybackState.Stopped;
+            bool audioSelected = false;
+            try
+            {
+                foreach (DataGridViewRow row in gridView.SelectedRows)
+                {
+                    object value = row.Cells["ColumnPath"].Value;
+                    if (value != null && Manipulator.IsAudioFile(value.ToString()))
+                    {
+                        audioSelected = true;
+                        break;
+                    }
+                }
+            }
+            catch { } // columns not created yet
+
+            _btnPlayAll.Enabled = hasPlayer && (active || audioSelected);
+            _btnPrev.Enabled = hasPlayer && active;
+            _btnNext.Enabled = hasPlayer && active;
+            _btnStop.Enabled = hasPlayer && active;
+            progressBar.Enabled = hasPlayer && active;
+            _btnDisableTimerSong.Enabled = hasPlayer && active;
         }
 
         [System.Runtime.InteropServices.DllImport("winmm.dll")]
@@ -91,14 +128,169 @@ namespace Mp3TagReader.Forms
             InitializeComponent();
             InitializeModernLayout();
             this.FormClosing += MainForm_FormClosing;
+            treeViewFolder.AfterSelect += treeViewFolder_AfterSelect;
+            listMp3Infos.KeepOnTop = delegate(Mp3Info item) { return item is ParentFolderInfo; };
+
+            player = CreatePlayer();
+            if (player == null)
+            {
+                playerGroupBox.Enabled = false;
+                playerGroupBox.Text = "Music Player (Libs\\ffplay.exe not found)";
+            }
+            else
+            {
+                player.TrackEnded += player_TrackEnded;
+            }
+            UpdatePlayerButtons();
+        }
+
+        // songs are always played with the bundled Libs\ffplay.exe
+        private static ITrackPlayer CreatePlayer()
+        {
+            string ffplay = FfplayTrackPlayer.FindFfplay();
+            return ffplay != null ? new FfplayTrackPlayer(ffplay) : null;
+        }
+
+        private bool EnsurePlayerAvailable()
+        {
+            if (player != null) return true;
+            MessageBox.Show("Libs\\ffplay.exe was not found next to Mp3TagReader.exe, so songs cannot be played.",
+                "Music Player", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            return false;
+        }
+
+        // raised on a worker thread: continue on the UI thread
+        private void player_TrackEnded(object sender, TrackEndedEventArgs e)
+        {
+            try
+            {
+                if (!this.IsDisposed && this.IsHandleCreated)
+                {
+                    this.BeginInvoke((MethodInvoker)delegate { OnTrackEnded(e); });
+                }
+            }
+            catch (InvalidOperationException) { }
+        }
+
+        private void OnTrackEnded(TrackEndedEventArgs e)
+        {
+            if (currentPlaybackState != PlaybackState.Playing || playOrder.Count == 0) return;
+
+            try
+            {
+                if (e.Failed)
+                {
+                    consecutiveFailures++;
+                    lblResult.Text = "Cannot play " + Path.GetFileName(nowPlayingFile) + (e.Error != null ? ": " + e.Error : "");
+                    if (consecutiveFailures >= playOrder.Count)
+                    {
+                        StopPlayback(); // nothing in the list can be played
+                        return;
+                    }
+                }
+                else
+                {
+                    consecutiveFailures = 0;
+                    if (replayState == 2) // repeat one
+                    {
+                        PlayAt(orderPos);
+                        return;
+                    }
+                }
+
+                if (orderPos + 1 < playOrder.Count)
+                {
+                    PlayAt(orderPos + 1);
+                }
+                else if (replayState != 0) // repeat playlist
+                {
+                    if (_chkShuffle.Checked)
+                    {
+                        BuildPlayOrder(playOrder[random.Next(playOrder.Count)]);
+                        PlayAt(0);
+                    }
+                    else
+                    {
+                        PlayAt(0);
+                    }
+                }
+                else
+                {
+                    StopPlayback();
+                }
+            }
+            catch (Exception ex)
+            {
+                StopPlayback();
+                lblResult.Text = "Player error: " + ex.Message;
+            }
+        }
+
+        // playOrder = indexes into playlist; with shuffle the start song comes first and the others follow in random order.
+        // Returns the position of startIndex in playOrder.
+        private int BuildPlayOrder(int startIndex)
+        {
+            playOrder = new List<int>();
+            for (int i = 0; i < playlist.Count; i++) playOrder.Add(i);
+            if (!_chkShuffle.Checked) return startIndex;
+
+            playOrder.Remove(startIndex);
+            for (int i = playOrder.Count - 1; i > 0; i--)
+            {
+                int j = random.Next(i + 1);
+                int t = playOrder[i];
+                playOrder[i] = playOrder[j];
+                playOrder[j] = t;
+            }
+            playOrder.Insert(0, startIndex);
+            return 0;
+        }
+
+        private void PlayAt(int position)
+        {
+            orderPos = position;
+            string path = playlist[playOrder[position]];
+            nowPlayingFile = path;
+            nowPlayingDuration = GetDuration(path);
+            player.Play(path, 0);
+            UpdatePlaybackUI(PlaybackState.Playing);
+            this.Text = "Now Playing - " + Path.GetFileNameWithoutExtension(path) + " | ";
+            setProgressBar(1);
+        }
+
+        private static double GetDuration(string path)
+        {
+            try
+            {
+                return TagLib.File.Create(path).Properties.Duration.TotalSeconds;
+            }
+            catch
+            {
+                return 0;
+            }
+        }
+
+        private void StopPlayback()
+        {
+            try
+            {
+                if (player != null) player.Stop();
+            }
+            catch { }
+            nowPlayingFile = string.Empty;
+            nowPlayingDuration = 0;
+            UpdatePlaybackUI(PlaybackState.Stopped);
+            this.Text = "Mp3TagReader";
+            setProgressBar(0);
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+            if (player == null) return;
             try
             {
-                windowsMediaPlayer.controls.stop();
-                windowsMediaPlayer.close();
+                // also ends a running ffplay process
+                player.Dispose();
             }
             catch { }
         }
@@ -115,6 +307,7 @@ namespace Mp3TagReader.Forms
                 columnFilePath.Visible = false;
                 DataGridViewTextBoxColumn columnFileName = new DataGridViewTextBoxColumn();
                 columnFileName.DataPropertyName = "Name";
+                columnFileName.Name = "ColumnName";
                 columnFileName.HeaderText = "File Name";
                 columnFileName.Width = gridView.Width - 180;
                 DataGridViewTextBoxColumn columnFileDate = new DataGridViewTextBoxColumn();
@@ -131,7 +324,6 @@ namespace Mp3TagReader.Forms
 
                 // special: for autoplay
                 //ListFiles();
-                //windowsMediaPlayer.settings.setMode("shuffle", true);
 
                 //PlaySelectedMp3Files();
             }
@@ -176,6 +368,7 @@ namespace Mp3TagReader.Forms
             {
                 gridView.DataSource = null;
                 listMp3Infos.Clear();
+                tagsShownFor = null; // re-read tags after a reload, the files may have changed
             }
             catch (Exception) { }
         }
@@ -185,7 +378,12 @@ namespace Mp3TagReader.Forms
             try
             {
                 gridView.DataSource = listMp3Infos;
-                _lblCount.Text = gridView.RowCount.ToString() + " files";
+                int count = 0;
+                foreach (Mp3Info item in listMp3Infos)
+                {
+                    if (!(item is ParentFolderInfo)) count++; // the ".." row is not an entry of the folder
+                }
+                _lblCount.Text = count + " files";
             }
             catch (IndexOutOfRangeException)
             {
@@ -206,16 +404,18 @@ namespace Mp3TagReader.Forms
             }
         }
 
-        private void listFiles(String[] searchPattern, String filePath, String searchString)
+        // Move the listed folder to the top of the history in cbbFilePath and save it to folderList.txt.
+        // Only called for an explicit "List Files", never while browsing or searching.
+        private void addToFolderHistory(String filePath)
         {
-            // Update directory path history in cbbFilePath
-            if (!string.IsNullOrEmpty(filePath) && Directory.Exists(filePath))
+            if (string.IsNullOrEmpty(filePath) || !Directory.Exists(filePath)) return;
+
+            string normPath = Path.GetFullPath(filePath);
+
+            int existingIdx = -1;
+            for (int idx = 0; idx < cbbFilePath.Items.Count; idx++)
             {
-                string normPath = Path.GetFullPath(filePath);
-                
-                // Temporarily disable index changed event if any, or just modify items
-                int existingIdx = -1;
-                for (int idx = 0; idx < cbbFilePath.Items.Count; idx++)
+                try
                 {
                     if (Path.GetFullPath(cbbFilePath.Items[idx].ToString()).Equals(normPath, StringComparison.OrdinalIgnoreCase))
                     {
@@ -223,58 +423,105 @@ namespace Mp3TagReader.Forms
                         break;
                     }
                 }
-
-                if (existingIdx != 0)
-                {
-                    if (existingIdx > 0)
-                    {
-                        cbbFilePath.Items.RemoveAt(existingIdx);
-                    }
-                    
-                    cbbFilePath.Items.Insert(0, filePath);
-                    
-                    // Limit to 10 items
-                    while (cbbFilePath.Items.Count > 10)
-                    {
-                        cbbFilePath.Items.RemoveAt(cbbFilePath.Items.Count - 1);
-                    }
-                    
-                    cbbFilePath.SelectedIndex = 0;
-
-                    // Save history to folderList.txt
-                    try
-                    {
-                        List<string> lines = new List<string>();
-                        foreach (var item in cbbFilePath.Items)
-                        {
-                            lines.Add(item.ToString());
-                        }
-                        System.IO.File.WriteAllLines(folderListPath, lines.ToArray());
-                    }
-                    catch { }
-                }
+                catch { } // invalid line in folderList.txt
             }
 
+            if (existingIdx == 0) return;
+
+            suppressFolderSearch = true;
+            try
+            {
+                if (existingIdx > 0)
+                {
+                    cbbFilePath.Items.RemoveAt(existingIdx);
+                }
+
+                cbbFilePath.Items.Insert(0, filePath);
+
+                // Limit to 10 items
+                while (cbbFilePath.Items.Count > 10)
+                {
+                    cbbFilePath.Items.RemoveAt(cbbFilePath.Items.Count - 1);
+                }
+
+                cbbFilePath.SelectedIndex = 0;
+            }
+            finally
+            {
+                suppressFolderSearch = false;
+            }
+
+            // Save history to folderList.txt
+            try
+            {
+                List<string> lines = new List<string>();
+                foreach (var item in cbbFilePath.Items)
+                {
+                    lines.Add(item.ToString());
+                }
+                System.IO.File.WriteAllLines(folderListPath, lines.ToArray());
+            }
+            catch { }
+        }
+
+        // GetFiles(..., AllDirectories) aborts on the first folder without access; walk the tree manually instead
+        private List<FileInfo> getFilesSafe(DirectoryInfo di, String searchPattern, SearchOption option)
+        {
+            List<FileInfo> result = new List<FileInfo>();
+            try
+            {
+                result.AddRange(di.GetFiles(searchPattern, SearchOption.TopDirectoryOnly));
+            }
+            catch (UnauthorizedAccessException) { }
+            catch (IOException) { }
+
+            if (option == SearchOption.AllDirectories)
+            {
+                foreach (DirectoryInfo sub in getDirectoriesSafe(di))
+                {
+                    result.AddRange(getFilesSafe(sub, searchPattern, option));
+                }
+            }
+            return result;
+        }
+
+        private DirectoryInfo[] getDirectoriesSafe(DirectoryInfo di)
+        {
+            try
+            {
+                return di.GetDirectories();
+            }
+            catch (UnauthorizedAccessException) { }
+            catch (IOException) { }
+            return new DirectoryInfo[0];
+        }
+
+        private void listFiles(String[] searchPattern, String filePath, String searchString)
+        {
+            listFiles(searchPattern, filePath, searchString, SearchOption.AllDirectories);
+        }
+
+        private void listFiles(String[] searchPattern, String filePath, String searchString, SearchOption option)
+        {
             DirectoryInfo di = new DirectoryInfo(filePath);
+            if (!di.Exists)
+            {
+                throw new DirectoryNotFoundException("Folder not found: " + filePath);
+            }
+
             foreach (String s in searchPattern)
             {
-                allFiles = di.GetFiles(s, SearchOption.AllDirectories);
-                foreach (FileInfo fi in allFiles)
+                foreach (FileInfo fi in getFilesSafe(di, s, option))
                 {
                     if (!searchString.Equals(""))
                     {
                         if (fi.Name.ToLower().Contains(searchString.ToLower()))
-                            listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
+                            listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, fi.CreationTime));
                     }
                     else
-                        listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
+                        listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, fi.CreationTime));
                 }
             }
-        }
-
-        private void listAllFiles(String filePath)
-        {
-            listFiles(allPatterns, filePath, "");
         }
 
         private void listVideoFiles(String filePath)
@@ -295,7 +542,7 @@ namespace Mp3TagReader.Forms
         private void listFolders(String filePath, String searchString)
         {
             DirectoryInfo di = new DirectoryInfo(filePath);
-            DirectoryInfo[] folders = di.GetDirectories();
+            DirectoryInfo[] folders = getDirectoriesSafe(di);
             foreach (DirectoryInfo folder in folders)
             {
                 if (searchString.Equals(""))
@@ -312,6 +559,60 @@ namespace Mp3TagReader.Forms
             }
         }
 
+        // folder shown by the last listFolderContent call
+        private string browsedFolder = string.Empty;
+
+        // Content of one folder: its subfolders first, then the files directly inside it (audio + video, or every
+        // file when allFiles). Files of the subfolders are not included: double-click a subfolder to browse into it.
+        private void listFolderContent(String folder, bool allFiles)
+        {
+            DirectoryInfo di = new DirectoryInfo(folder);
+            if (!di.Exists)
+            {
+                throw new DirectoryNotFoundException("Folder not found: " + folder);
+            }
+            browsedFolder = di.FullName;
+
+            // ".." row to go up (not at the root of a drive)
+            if (di.Parent != null)
+            {
+                listMp3Infos.Add(new ParentFolderInfo(di.Parent.FullName));
+            }
+
+            List<DirectoryInfo> folders = new List<DirectoryInfo>(getDirectoriesSafe(di));
+            folders.Sort(delegate(DirectoryInfo a, DirectoryInfo b) { return string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase); });
+            foreach (DirectoryInfo sub in folders)
+            {
+                listMp3Infos.Add(new FolderInfo(sub.FullName, sub.Name));
+            }
+
+            List<String> patterns = new List<String>();
+            if (allFiles)
+            {
+                patterns.AddRange(allPatterns);
+            }
+            else
+            {
+                patterns.AddRange(audioPatterns);
+                patterns.AddRange(videoPatterns);
+            }
+
+            List<FileInfo> files = new List<FileInfo>();
+            HashSet<string> seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (String pattern in patterns)
+            {
+                foreach (FileInfo fi in getFilesSafe(di, pattern, SearchOption.TopDirectoryOnly))
+                {
+                    if (seen.Add(fi.FullName)) files.Add(fi);
+                }
+            }
+            files.Sort(delegate(FileInfo a, FileInfo b) { return string.Compare(a.Name, b.Name, StringComparison.CurrentCultureIgnoreCase); });
+            foreach (FileInfo fi in files)
+            {
+                listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, fi.CreationTime));
+            }
+        }
+
         private void ListFiles()
         {
             string _temp = string.Empty;
@@ -320,9 +621,9 @@ namespace Mp3TagReader.Forms
                 ClearMp3List();
                 _temp = filePath;
                 filePath = cbbFilePath.Text;
+                addToFolderHistory(filePath);
 
-                listAudioFiles(filePath);
-                listVideoFiles(filePath);
+                listFolderContent(filePath, false);
 
                 RebuildList();
             }
@@ -330,7 +631,9 @@ namespace Mp3TagReader.Forms
             {
                 MessageBox.Show(e.Message);
                 filePath = _temp;
+                suppressFolderSearch = true;
                 cbbFilePath.Text = filePath;
+                suppressFolderSearch = false;
             }
         }
 
@@ -342,8 +645,9 @@ namespace Mp3TagReader.Forms
                 ClearMp3List();
                 _temp = filePath;
                 filePath = cbbFilePath.Text;
+                addToFolderHistory(filePath);
 
-                listAllFiles(filePath);
+                listFolderContent(filePath, true);
 
                 RebuildList();
             }
@@ -351,7 +655,9 @@ namespace Mp3TagReader.Forms
             {
                 MessageBox.Show(e.Message);
                 filePath = _temp;
+                suppressFolderSearch = true;
                 cbbFilePath.Text = filePath;
+                suppressFolderSearch = false;
             }
         }
 
@@ -371,15 +677,41 @@ namespace Mp3TagReader.Forms
             txtBitrate.Text = string.Empty;
             txtLyrics.Text = string.Empty;
             txtComments.Text = string.Empty;
-            picBxArtwork.Image = null;
-            binArtwork = null;
+            SetArtworkImage(null);
+        }
+
+        private void SetArtworkImage(byte[] data)
+        {
+            Image old = picBxArtwork.Image;
+            binArtwork = data;
+            if (data == null)
+            {
+                picBxArtwork.Image = null;
+            }
+            else
+            {
+                using (MemoryStream ms = new MemoryStream(data))
+                using (Image full = Image.FromStream(ms))
+                {
+                    picBxArtwork.Image = full.GetThumbnailImage(picBxArtwork.Height, picBxArtwork.Height, null, IntPtr.Zero);
+                }
+            }
+            if (old != null)
+            {
+                old.Dispose();
+            }
         }
 
         private void ShowTags(string _path)
         {
             try
             {
-                if (!isFolder() && !isVideo())
+                if (!Manipulator.IsAudioFile(_path))
+                {
+                    // folder / video / other file: don't leave the previous song's tags on screen
+                    ClearTagFields();
+                }
+                else
                 {
                     selectedMp3 = TagLib.File.Create(_path);
                     txtArtist.Text = Manipulator.ArrayToString(selectedMp3.Tag.Performers, ",");
@@ -394,13 +726,11 @@ namespace Mp3TagReader.Forms
 
                     if (selectedMp3.Tag.Pictures.Length >= 1)
                     {
-                        binArtwork = (byte[])(selectedMp3.Tag.Pictures[0].Data.Data);
-                        picBxArtwork.Image = Image.FromStream(new MemoryStream(binArtwork)).GetThumbnailImage(picBxArtwork.Height, picBxArtwork.Height, null, IntPtr.Zero);
+                        SetArtworkImage((byte[])(selectedMp3.Tag.Pictures[0].Data.Data));
                     }
                     else
                     {
-                        binArtwork = null;
-                        picBxArtwork.Image = null;
+                        SetArtworkImage(null);
                     }
                 }
             }
@@ -411,363 +741,279 @@ namespace Mp3TagReader.Forms
             }
         }
 
+        private const string MultipleValues = "(multiple values)";
+
+        // file whose tags are currently shown in the editor (null when several files are shown)
+        private string tagsShownFor = null;
+
         private void ShowMultiTags(List<string> fileNames)
         {
-            string temp = string.Empty;
-            string artistTag = string.Empty;
-            string titleTag = string.Empty;
-            string albumTag = string.Empty;
-            string trackTag = string.Empty;
-            string yearTag = string.Empty;
-            string genreTag = string.Empty;
-            string lyricTag = string.Empty;
-            string commentTag = string.Empty;
+            TextBox[] boxes = { txtArtist, txtAlbum, txtTitle, txtTrack, txtYear, txtGenre, txtLyrics, txtComments };
+            string[] fieldValues = new string[boxes.Length];
+            bool[] differs = new bool[boxes.Length];
+            bool first = true;
+            int unreadable = 0;
 
-            TagLib.File tempFile = null;
-            try
-            {
-                tempFile = TagLib.File.Create(fileNames[0]);
-                artistTag = Manipulator.ArrayToString(tempFile.Tag.Performers, ",");
-                titleTag = tempFile.Tag.Title;
-                albumTag = tempFile.Tag.Album;
-                trackTag = tempFile.Tag.Track.ToString();
-                yearTag = tempFile.Tag.Year.ToString();
-                genreTag = Manipulator.ArrayToString(tempFile.Tag.Genres, ",");
-                lyricTag = tempFile.Tag.Lyrics;
-                commentTag = tempFile.Tag.Comment;
-            }
-            catch (Exception) { }
-
-            foreach (string filePath in fileNames)
+            foreach (string path in fileNames)
             {
                 try
                 {
-                    TagLib.File tag = TagLib.File.Create(filePath);
-                    temp = Manipulator.ArrayToString(tag.Tag.Performers, ",");
-                    if (temp != artistTag)
+                    TagLib.File tag = TagLib.File.Create(path);
+                    string[] values = new string[]
                     {
-                        txtArtist.Text = "(multiple values)";
-                    }
-                    else
+                        Manipulator.ArrayToString(tag.Tag.Performers, ","),
+                        tag.Tag.Album,
+                        tag.Tag.Title,
+                        tag.Tag.Track.ToString(),
+                        tag.Tag.Year.ToString(),
+                        Manipulator.ArrayToString(tag.Tag.Genres, ","),
+                        tag.Tag.Lyrics,
+                        tag.Tag.Comment
+                    };
+
+                    for (int i = 0; i < values.Length; i++)
                     {
-                        txtArtist.Text = temp;
+                        string value = values[i] ?? string.Empty;
+                        if (first)
+                        {
+                            fieldValues[i] = value;
+                        }
+                        else if (value != fieldValues[i])
+                        {
+                            // once a field differs it stays "(multiple values)", whatever the next files contain
+                            differs[i] = true;
+                        }
                     }
-                    temp = tag.Tag.Album;
-                    if (temp != albumTag)
-                    {
-                        txtAlbum.Text = "(multiple values)";
-                    }
-                    else
-                    {
-                        txtAlbum.Text = temp;
-                    }
-                    temp = tag.Tag.Title;
-                    if (temp != titleTag)
-                    {
-                        txtTitle.Text = "(multiple values)";
-                    }
-                    else
-                    {
-                        txtTitle.Text = temp;
-                    }
-                    temp = tag.Tag.Track.ToString();
-                    if (temp != trackTag)
-                    {
-                        txtTrack.Text = "(multiple values)";
-                    }
-                    else
-                    {
-                        txtTrack.Text = temp;
-                    }
-                    temp = tag.Tag.Year.ToString();
-                    if (temp != yearTag)
-                    {
-                        txtYear.Text = "(multiple values)";
-                    }
-                    else
-                    {
-                        txtYear.Text = temp;
-                    }
-                    temp = Manipulator.ArrayToString(tag.Tag.Genres, ",");
-                    if (temp != genreTag)
-                    {
-                        txtGenre.Text = "(multiple values)";
-                    }
-                    else
-                    {
-                        txtGenre.Text = temp;
-                    }
-                    temp = tag.Tag.Lyrics;
-                    if (temp != lyricTag)
-                    {
-                        txtLyrics.Text = "(multiple values)";
-                    }
-                    else
-                    {
-                        txtLyrics.Text = temp;
-                    }
-                    temp = tag.Tag.Comment;
-                    if (temp != commentTag)
-                    {
-                        txtComments.Text = "(multiple values)";
-                    }
-                    else
-                    {
-                        txtComments.Text = temp;
-                    }
+                    first = false;
                 }
-                catch (Exception e)
+                catch (Exception)
                 {
-                    MessageBox.Show(e.Message);
+                    unreadable++;
                 }
             }
+
+            for (int i = 0; i < boxes.Length; i++)
+            {
+                boxes[i].Text = differs[i] ? MultipleValues : (fieldValues[i] ?? string.Empty);
+            }
+            txtBitrate.Text = string.Empty;
+            SetArtworkImage(null);
+
+            if (unreadable > 0)
+            {
+                lblResult.Text = fileNames.Count + " selected, " + unreadable + " unreadable";
+            }
+        }
+
+        private bool TryParseTagNumber(TextBox box, string fieldName, out uint value)
+        {
+            value = 0;
+            string text = box.Text.Trim();
+            if (text.Length == 0) return true;
+            if (uint.TryParse(text, out value)) return true;
+
+            MessageBox.Show(fieldName + " must be a positive number.", "Warning");
+            box.Focus();
+            return false;
         }
 
         private void _btnSave_Click(object sender, EventArgs e)
         {
-            if (gridView.SelectedRows.Count == 1)
+            if (listSelectedFiles.Count == 0)
+            {
+                MessageBox.Show("Please select an audio file first.", "Warning");
+                return;
+            }
+
+            // with several files, a field still showing "(multiple values)" is left untouched
+            bool multi = listSelectedFiles.Count > 1;
+            uint track = 0;
+            uint year = 0;
+            bool setTrack = !(multi && txtTrack.Text == MultipleValues);
+            bool setYear = !(multi && txtYear.Text == MultipleValues);
+            if (setTrack && !TryParseTagNumber(txtTrack, "Track", out track)) return;
+            if (setYear && !TryParseTagNumber(txtYear, "Year", out year)) return;
+
+            int saved = 0;
+            List<string> errors = new List<string>();
+            foreach (string path in listSelectedFiles)
             {
                 try
                 {
-                    TagLib.File mp3 = TagLib.File.Create(selectedFileName);
-                    mp3.Tag.Performers = new string[] { txtArtist.Text };
-                    mp3.Tag.Album = txtAlbum.Text;
-                    mp3.Tag.Title = txtTitle.Text;
-                    mp3.Tag.Track = Convert.ToUInt32(txtTrack.Text);
-                    mp3.Tag.Year = Convert.ToUInt32(txtYear.Text);
-                    mp3.Tag.Genres = new string[] { txtGenre.Text };
-                    mp3.Tag.Lyrics = txtLyrics.Text;
-                    mp3.Tag.Comment = txtComments.Text;
-                    mp3.Save();
-                    lblResult.Text = "Saved";
-                }
-                catch (Exception ex)
-                {
-                    MessageBox.Show(ex.Message);
-                }
-            }
-            else
-            {
-                foreach (string filePath in listSelectedFiles)
-                {
-                    TagLib.File mp3 = TagLib.File.Create(filePath);
-                    if (txtArtist.Text != "(multiple values)")
+                    TagLib.File mp3 = TagLib.File.Create(path);
+                    if (!multi || txtArtist.Text != MultipleValues)
                     {
-                        mp3.Tag.Performers = new string[] { txtArtist.Text };
+                        mp3.Tag.Performers = Manipulator.StringToArray(txtArtist.Text, ',');
                     }
-                    if (txtAlbum.Text != "(multiple values)")
+                    if (!multi || txtAlbum.Text != MultipleValues)
                     {
                         mp3.Tag.Album = txtAlbum.Text;
                     }
-                    if (txtTitle.Text != "(multiple values)")
+                    if (!multi || txtTitle.Text != MultipleValues)
                     {
                         mp3.Tag.Title = txtTitle.Text;
                     }
-                    if (txtTrack.Text != "(multiple values)")
+                    if (setTrack)
                     {
-                        mp3.Tag.Track = Convert.ToUInt32(txtTrack.Text);
+                        mp3.Tag.Track = track;
                     }
-                    if (txtYear.Text != "(multiple values)")
+                    if (setYear)
                     {
-                        mp3.Tag.Year = Convert.ToUInt32(txtYear.Text);
+                        mp3.Tag.Year = year;
                     }
-                    if (txtGenre.Text != "(multiple values)")
+                    if (!multi || txtGenre.Text != MultipleValues)
                     {
-                        mp3.Tag.Genres = new string[] { txtGenre.Text };
+                        mp3.Tag.Genres = Manipulator.StringToArray(txtGenre.Text, ',');
                     }
-                    if (txtLyrics.Text != "(multiple values)")
+                    if (!multi || txtLyrics.Text != MultipleValues)
                     {
                         mp3.Tag.Lyrics = txtLyrics.Text;
                     }
-                    if (txtComments.Text != "(multiple values)")
+                    if (!multi || txtComments.Text != MultipleValues)
                     {
                         mp3.Tag.Comment = txtComments.Text;
                     }
                     mp3.Save();
-                    lblResult.Text = "Saved";
+                    saved++;
                 }
+                catch (Exception ex)
+                {
+                    errors.Add(Path.GetFileName(path) + ": " + ex.Message);
+                }
+            }
+
+            lblResult.Text = multi ? saved + " saved" : (saved == 1 ? "Saved" : "Not saved");
+            if (errors.Count > 0)
+            {
+                MessageBox.Show(string.Join(Environment.NewLine, errors.ToArray()), "Error");
             }
         }
 
         private void gridView_CellClick(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return; // Header clicked, ignore
-            try
-            {
-                artistFlag = 0;
-                titleFlag = 0;
-                lblArtwork.Text = string.Empty;
-                lblResult.Text = gridView.SelectedRows.Count.ToString() + " selected";
-                if (gridView.SelectedRows.Count == 1)
-                {
-                    selectedRowIndex = gridView.CurrentRow.Index;
-                    DisplaySelectedFileInfo();
-
-                    // add to list for setting artwork later
-                    listSelectedFiles.Clear();
-                    listSelectedFiles.Add(selectedFileName);
-                }
-                else
-                {
-                    DisplayMultiSelectedFilesInfo();
-                }
-                changeCoverFlag = false;
-            }
-            catch (Exception ex)
-            {
-                MessageBox.Show(ex.Message);
-            }
-        }
-
-        private void DisplaySelectedFileInfo()
-        {
-            if (gridView.CurrentRow == null || gridView.CurrentRow.Index < 0) return;
-            if (gridView.CurrentRow.Cells["ColumnPath"].Value == null) return;
-
-            if (gridView.CurrentRow.Index != selectedRowIndex || gridView.CurrentRow.Index == 0)
-            {
-                selectedFileName = gridView.CurrentRow.Cells["ColumnPath"].Value.ToString();
-                lblResult.Text = "";
-                ShowTags(selectedFileName);
-            }
-            else { }
-
-        }
-
-        private void DisplayMultiSelectedFilesInfo()
-        {
-            if (gridView.CurrentRow == null || gridView.CurrentRow.Index < 0) return;
-            if (gridView.CurrentRow.Cells["ColumnPath"].Value == null) return;
-            string selectedPath = gridView.CurrentRow.Cells["ColumnPath"].Value.ToString();
-            if (isFolder() || isVideo())
-            {
-                //
-            }
-            else
-            {
-                listSelectedFiles.Clear();
-                foreach (DataGridViewRow row in gridView.SelectedRows)
-                {
-                    if (row.Cells["ColumnPath"].Value != null)
-                    {
-                        listSelectedFiles.Add(row.Cells["ColumnPath"].Value.ToString());
-                    }
-                }
-                ShowMultiTags(listSelectedFiles);
-            }
+            artistFlag = 0;
+            titleFlag = 0;
+            lblArtwork.Text = string.Empty;
+            changeCoverFlag = false;
         }
 
         private void gridView_SelectionChanged(object sender, EventArgs e)
         {
-            DisplaySelectedFileInfo();
+            try
+            {
+                UpdateSelectionInfo();
+            }
+            catch (Exception ex)
+            {
+                lblResult.Text = "Error: " + ex.Message;
+            }
+            UpdatePlayerButtons();
         }
 
-        //http://forum.codecall.net/csharp-tutorials/20420-tutorial-playing-mp3-files-c.html#post199646
-        //http://www.codeproject.com/Articles/14709/Playing-MP3s-using-MCI
-        private void PlaySelectedMp3Files()
+        // Keep selectedFileName, listSelectedFiles and the tag editor in sync with the selected rows,
+        // whether the selection changed by mouse, keyboard, sorting or code.
+        private void UpdateSelectionInfo()
+        {
+            List<string> selectedPaths = new List<string>();
+            foreach (DataGridViewRow row in gridView.SelectedRows)
+            {
+                if (row.Cells["ColumnPath"].Value != null)
+                {
+                    selectedPaths.Add(row.Cells["ColumnPath"].Value.ToString());
+                }
+            }
+            if (selectedPaths.Count == 0) return;
+
+            lblResult.Text = selectedPaths.Count + " selected";
+            listSelectedFiles.Clear();
+
+            if (selectedPaths.Count == 1)
+            {
+                string path = selectedPaths[0];
+                selectedFileName = path;
+                if (path != tagsShownFor)
+                {
+                    ShowTags(path);
+                    tagsShownFor = path;
+                }
+                if (Manipulator.IsAudioFile(path))
+                {
+                    listSelectedFiles.Add(path);
+                }
+            }
+            else
+            {
+                foreach (string path in selectedPaths)
+                {
+                    if (Manipulator.IsAudioFile(path))
+                    {
+                        listSelectedFiles.Add(path);
+                    }
+                }
+                tagsShownFor = null;
+                if (listSelectedFiles.Count > 0)
+                {
+                    ShowMultiTags(listSelectedFiles);
+                }
+                else
+                {
+                    ClearTagFields();
+                }
+            }
+        }
+
+        private void PlaySelectedMp3Files(bool openNonAudioExternally)
         {
             try
             {
                 if (gridView.CurrentRow == null) return;
                 if (gridView.CurrentRow.Cells["ColumnPath"].Value == null) return;
                 selectedFileName = gridView.CurrentRow.Cells["ColumnPath"].Value.ToString();
-                if (Manipulator.IsVideoFile(selectedFileName) && _btnList.Enabled == false)
+                if (openNonAudioExternally && !Manipulator.IsAudioFile(selectedFileName))
                 {
+                    // videos and other files are not part of the audio playlist: open them with the default app
                     System.Diagnostics.Process.Start(selectedFileName);
+                    return;
                 }
-                else
+
+                if (!EnsurePlayerAvailable()) return;
+
+                // double-click on the song that is already playing: keep playing
+                if (currentPlaybackState == PlaybackState.Playing &&
+                    string.Equals(nowPlayingFile, selectedFileName, StringComparison.OrdinalIgnoreCase))
                 {
-                    //mciSendString("open \"" + selectedFileName + "\" type mpegvideo alias MediaFile", null, 0, IntPtr.Zero);
-                    //mciSendString("play MediaFile" + playMode, null, 0, IntPtr.Zero);
+                    return;
+                }
 
-                    string currentUrl = (windowsMediaPlayer.currentMedia != null) ? windowsMediaPlayer.currentMedia.sourceURL : string.Empty;
-                    bool isSameFile = false;
-                    try
+                int index = getSongIndex(selectedFileName);
+
+                // Build a FULL playlist with all songs so Prev/Next wrap correctly
+                List<string> songs = new List<string>();
+                int startIndex = 0; // playlist index of the selected song (or the next audio file after it)
+                for (int i = 0; i <= gridView.Rows.Count - 1; i++)
+                {
+                    if (gridView.Rows[i].Cells["ColumnPath"].Value == null) continue;
+                    string fi = gridView.Rows[i].Cells["ColumnPath"].Value.ToString();
+                    if (Manipulator.IsAudioFile(fi))
                     {
-                        if (!string.IsNullOrEmpty(currentUrl) && !string.IsNullOrEmpty(selectedFileName))
-                        {
-                            isSameFile = string.Compare(Path.GetFullPath(currentUrl), Path.GetFullPath(selectedFileName), StringComparison.OrdinalIgnoreCase) == 0;
-                        }
-                    }
-                    catch { }
-
-                    if (windowsMediaPlayer.playState == WMPLib.WMPPlayState.wmppsPlaying && isSameFile)
-                    {
-                        if (replayState == 1) // repeat playlist
-                        {
-                            windowsMediaPlayer.settings.setMode("loop", true);
-                        }
-                        else if (_chkShuffle.Checked == true)
-                        {
-                            windowsMediaPlayer.settings.setMode("shuffle", true);
-                        }
-                        else
-                        {
-                            windowsMediaPlayer.settings.setMode("loop", false);
-                            windowsMediaPlayer.settings.setMode("shuffle", false);
-                        }
-                    }
-                    else
-                    {
-                        // Stop current playback before rebuilding playlist
-                        try
-                        {
-                            windowsMediaPlayer.controls.stop();
-                        }
-                        catch { }
-                        string myPlaylist = "MyPlayList";
-
-                        plItems = windowsMediaPlayer.playlistCollection.getByName(myPlaylist);
-
-                        pl = windowsMediaPlayer.playlistCollection.newPlaylist(myPlaylist);
-
-                        int index = getSongIndex(selectedFileName);
-
-                        // Build a FULL playlist with all songs so Prev/Next wrap correctly
-                        string fi = string.Empty;
-                        int wmpStartIndex = 0; // WMP playlist index of the selected song
-                        int audioCount = 0;
-                        for (int i = 0; i <= gridView.Rows.Count - 1; i++)
-                        {
-                            fi = gridView.Rows[i].Cells["ColumnPath"].Value.ToString();
-                            if (Manipulator.IsAudioFile(fi))
-                            {
-                                WMPLib.IWMPMedia m1 = windowsMediaPlayer.newMedia(fi);
-                                pl.appendItem(m1);
-                                if (i < index) wmpStartIndex++; // count audio-only items before selected
-                                audioCount++;
-                            }
-                        }
-
-                        if (replayState == 1) // repeat playlist
-                        {
-                            windowsMediaPlayer.settings.setMode("loop", true);
-                        }
-
-                        if (_chkShuffle.Checked == true)
-                        {
-                            windowsMediaPlayer.settings.setMode("shuffle", true);
-                        }
-
-                        windowsMediaPlayer.currentPlaylist = pl;
-
-                        // Determine start position: random if shuffle, else selected song
-                        int startIndex = wmpStartIndex;
-                        if (_chkShuffle.Checked && pl.count > 0)
-                            startIndex = new System.Random().Next(0, pl.count);
-
-                        if (startIndex < pl.count)
-                            windowsMediaPlayer.controls.currentItem = pl.get_Item(startIndex);
-                        windowsMediaPlayer.controls.play();
-                        UpdatePlaybackUI(PlaybackState.Playing);
- 
-                        // If shuffle is on, update gridView selection to the randomly chosen song
-                        if (_chkShuffle.Checked)
-                            new System.Threading.Timer(_ => this.Invoke((Action)SelectCurrentPlayingRow), null, 350, System.Threading.Timeout.Infinite);
- 
-                        this.Text = "Now Playing - " + Path.GetFileNameWithoutExtension(selectedFileName) + " | ";
+                        songs.Add(fi);
+                        if (i < index) startIndex++; // count audio-only items before selected
                     }
                 }
+
+                if (songs.Count == 0)
+                {
+                    MessageBox.Show("No audio file in list", "Warning");
+                    return;
+                }
+
+                playlist = songs;
+                consecutiveFailures = 0;
+
+                // always start with the chosen song; shuffle only affects the order of the following songs
+                if (startIndex >= playlist.Count) startIndex = 0;
+                PlayAt(BuildPlayOrder(startIndex));
             }
             catch (Exception e)
             {
@@ -777,30 +1023,7 @@ namespace Mp3TagReader.Forms
 
         private void _btnStop_Click(object sender, EventArgs e)
         {
-            try
-            {
-                if (!isFolder())
-                {
-                    //mciSendString("close MediaFile", null, 0, IntPtr.Zero);
-                }
-
-                windowsMediaPlayer.controls.stop();
-                windowsMediaPlayer.close();
-                UpdatePlaybackUI(PlaybackState.Stopped);
-
-                this.Text = "Mp3TagReader";
-
-                timerNowPlayingText.Enabled = false;
-
-
-                // progress bar
-                setProgressBar(0);
-            }
-            catch
-            {
-                MessageBox.Show("No song in list", "Warning");
-                return;
-            }
+            StopPlayback();
         }
 
         private void _btnList_Click(object sender, EventArgs e)
@@ -832,7 +1055,7 @@ namespace Mp3TagReader.Forms
 
         private void loopThroughFolders(DirectoryInfo folder, string searchString)
         {
-            DirectoryInfo[] folders = folder.GetDirectories();
+            DirectoryInfo[] folders = getDirectoriesSafe(folder);
 
             if (folders.Length > 0)
             {
@@ -859,49 +1082,70 @@ namespace Mp3TagReader.Forms
             }
         }
 
+        private bool updatingReplayButton = false;
+
         private void chkReplay_CheckedChanged(object sender, EventArgs e)
         {
+            // setting _chkReplay.Checked below raises this event again; ignore those nested calls
+            if (updatingReplayButton) return;
+
             // Cycle: 0 (Off) -> 1 (Repeat Playlist) -> 2 (Repeat One)
             replayState = (replayState + 1) % 3;
-            
-            if (replayState == 0)
+            updatingReplayButton = true;
+            try
             {
-                _chkReplay.Checked = false;
-                _chkReplay.Text = "\u21BA"; // ↺ default icon
-                windowsMediaPlayer.settings.setMode("loop", false);
+                if (replayState == 0)
+                {
+                    _chkReplay.Checked = false;
+                    _chkReplay.Text = "\u21BA"; // ↺ default icon
+                }
+                else if (replayState == 1)
+                {
+                    _chkReplay.Checked = true;
+                    _chkReplay.Text = "\u21BA\u1D3A"; // ↺ᴬ (All)
+                }
+                else if (replayState == 2)
+                {
+                    _chkReplay.Checked = true;
+                    _chkReplay.Text = "\u21BA\u00B9"; // ↺¹ (One)
+                }
             }
-            else if (replayState == 1)
+            finally
             {
-                _chkReplay.Checked = true;
-                _chkReplay.Text = "\u21BA\u1D3A"; // ↺ᴬ (All)
-                windowsMediaPlayer.settings.setMode("loop", true);
-            }
-            else if (replayState == 2)
-            {
-                _chkReplay.Checked = true;
-                _chkReplay.Text = "\u21BA\u00B9"; // ↺¹ (One)
-                // Disable native playlist loop, we will manually loop the single item in timerSong_Tick
-                windowsMediaPlayer.settings.setMode("loop", false);
+                updatingReplayButton = false;
             }
         }
 
         private void _btnUntagged_Click(object sender, EventArgs e)
         {
             TagLib.File audio;
-            ClearMp3List();
-            try
+
+            // check the audio files of the current list
+            List<Mp3Info> candidates = new List<Mp3Info>();
+            foreach (Mp3Info info in listMp3Infos)
             {
-                if (allFiles == null)
+                if (!(info is FolderInfo) && Manipulator.IsAudioFile(info.Path))
                 {
-                    MessageBox.Show("Please load files first", "Warning");
-                    return;
+                    candidates.Add(info);
                 }
-                foreach (FileInfo fi in allFiles)
+            }
+
+            if (candidates.Count == 0)
+            {
+                MessageBox.Show("Please load files first", "Warning");
+                return;
+            }
+
+            ClearMp3List();
+            int unreadable = 0;
+            foreach (Mp3Info fi in candidates)
+            {
+                try
                 {
-                    audio = TagLib.File.Create(fi.FullName, ReadStyle.None);
+                    audio = TagLib.File.Create(fi.Path, ReadStyle.None);
                     if (audio.Tag == null)
                     {
-                        listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
+                        listMp3Infos.Add(fi);
                         continue;
                     }
 
@@ -925,45 +1169,48 @@ namespace Mp3TagReader.Forms
 
                     if (isUntagged)
                     {
-                        listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
+                        listMp3Infos.Add(fi);
                     }
                 }
-                gridView.DataSource = listMp3Infos;
-                _lblCount.Text = gridView.RowCount.ToString() + " files";
+                catch (Exception)
+                {
+                    // corrupt / unsupported file: skip it and keep checking the others
+                    unreadable++;
+                }
             }
-            catch (CorruptFileException ex)
-            {
-                MessageBox.Show(ex.ToString());
-                return;
-            }
-            catch (NullReferenceException)
-            {
-                MessageBox.Show("No song in list", "Warning");
-                return;
-            }
+            gridView.DataSource = listMp3Infos;
+            _lblCount.Text = gridView.RowCount.ToString() + " files" + (unreadable > 0 ? " (" + unreadable + " unreadable)" : "");
         }
 
         private void _btnPlayList_Click(object sender, EventArgs e)
         {
-            if (listMp3Infos.Count == 0)
-            {
-                MessageBox.Show("No song in list", "Warning");
-                return;
-            }
+            if (!EnsurePlayerAvailable()) return;
 
-            if (currentPlaybackState == PlaybackState.Stopped)
+            try
             {
-                PlaySelectedMp3Files();
+                if (currentPlaybackState == PlaybackState.Stopped)
+                {
+                    if (listMp3Infos.Count == 0)
+                    {
+                        MessageBox.Show("No song in list", "Warning");
+                        return;
+                    }
+                    PlaySelectedMp3Files(false);
+                }
+                else if (currentPlaybackState == PlaybackState.Playing)
+                {
+                    player.Pause();
+                    UpdatePlaybackUI(PlaybackState.Paused);
+                }
+                else if (currentPlaybackState == PlaybackState.Paused)
+                {
+                    player.Resume();
+                    UpdatePlaybackUI(PlaybackState.Playing);
+                }
             }
-            else if (currentPlaybackState == PlaybackState.Playing)
+            catch (Exception ex)
             {
-                windowsMediaPlayer.controls.pause();
-                UpdatePlaybackUI(PlaybackState.Paused);
-            }
-            else if (currentPlaybackState == PlaybackState.Paused)
-            {
-                windowsMediaPlayer.controls.play();
-                UpdatePlaybackUI(PlaybackState.Playing);
+                MessageBox.Show(ex.Message);
             }
         }
 
@@ -976,22 +1223,57 @@ namespace Mp3TagReader.Forms
                 selectedFileName = gridView.CurrentRow.Cells["ColumnPath"].Value.ToString();
                 if (isFolder())
                 {
+                    // browse into the clicked folder: its subfolders, then the files directly inside it
+                    string folder = selectedFileName;
+                    bool goingUp = gridView.CurrentRow.DataBoundItem is ParentFolderInfo;
+                    string cameFrom = browsedFolder;
                     ClearMp3List();
-                    string searchString = cbbFilePath.Text;
 
-                    listFolders(selectedFileName);
-                    listAudioFiles(selectedFileName);
-                    listVideoFiles(selectedFileName);
+                    listFolderContent(folder, _chkAllFiles.Checked);
 
-                    gridView.DataSource = listMp3Infos;
-                    _lblCount.Text = gridView.RowCount.ToString() + " results";
+                    RebuildList();
+
+                    // after "..", select the folder we just left
+                    if (goingUp)
+                    {
+                        foreach (DataGridViewRow row in gridView.Rows)
+                        {
+                            if (!(row.DataBoundItem is ParentFolderInfo) && row.Cells["ColumnPath"].Value != null &&
+                                string.Equals(row.Cells["ColumnPath"].Value.ToString(), cameFrom, StringComparison.OrdinalIgnoreCase))
+                            {
+                                gridView.CurrentCell = row.Cells["ColumnName"];
+                                gridView.FirstDisplayedScrollingRowIndex = row.Index;
+                                break;
+                            }
+                        }
+                    }
+
+                    // outside search mode, show the folder being browsed so "List Files" refreshes it;
+                    // in search mode the combobox holds the search text and is left alone
+                    if (_btnList.Enabled)
+                    {
+                        filePath = folder;
+                        suppressFolderSearch = true;
+                        try
+                        {
+                            cbbFilePath.Text = folder;
+                        }
+                        finally
+                        {
+                            suppressFolderSearch = false;
+                        }
+                        updateSelectedFilePath(folder);
+                    }
                 }
                 else
                 {
-                    PlaySelectedMp3Files();
+                    PlaySelectedMp3Files(true);
                 }
             }
-            catch (Exception) { }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message, "Warning");
+            }
         }
 
         private bool isFolder()
@@ -1128,18 +1410,20 @@ namespace Mp3TagReader.Forms
         // http://samuelhaddad.com/2009/03/22/c-net-and-lyricwiki-to-lookup-lyrics/
         private void _btnGetLyrics_Click(object sender, EventArgs e)
         {
-            Thread oThread = new Thread(new ThreadStart(getLyrics));
+            // read the text boxes here on the UI thread; the worker thread must not touch controls
+            string artist = txtArtist.Text;
+            string title = txtTitle.Text;
+            Thread oThread = new Thread(delegate() { getLyrics(artist, title); });
+            oThread.IsBackground = true;
             oThread.Start();
         }
 
-        private void getLyrics()
+        private void getLyrics(string artist, string title)
         {
             try
             {
                 LyricWiki wiki = new LyricWiki();
                 LyricsResult result = new LyricsResult();
-                string artist = txtArtist.Text;
-                string title = txtTitle.Text;
                 if (wiki.checkSongExists(artist, title))
                 {
                     result = wiki.getSong(artist, title);
@@ -1159,7 +1443,10 @@ namespace Mp3TagReader.Forms
             {
                 this.BeginInvoke((MethodInvoker)delegate
                 {
+                    // the LyricWiki service is offline: fall back to the web search
                     MessageBox.Show("Error fetching lyrics: " + ex.Message, "Error");
+                    Searcher searchLyric = new Searcher(title + " " + artist);
+                    searchLyric.Show(this);
                 });
             }
         }
@@ -1174,35 +1461,10 @@ namespace Mp3TagReader.Forms
         {
             try
             {
-                if (windowsMediaPlayer.playState == WMPLib.WMPPlayState.wmppsStopped)
+                // song changes / end of playlist are handled in OnTrackEnded; here only the progress is refreshed
+                if (player != null && currentPlaybackState == PlaybackState.Playing)
                 {
-                    _btnStop_Click(null, null);
-                    progressBar.Value = (int)0;
-                }
-                else
-                {
-                    if (currentPlaybackState == PlaybackState.Playing)
-                    {
-                        // Custom Repeat One handler: if track is near end, loop it back to start
-                        if (replayState == 2 && windowsMediaPlayer.currentMedia != null)
-                        {
-                            double duration = windowsMediaPlayer.currentMedia.duration;
-                            double position = windowsMediaPlayer.controls.currentPosition;
-                            if (duration > 0 && duration - position <= 1.0)
-                            {
-                                windowsMediaPlayer.controls.currentPosition = 0;
-                            }
-                        }
-
-                        string currentSong = windowsMediaPlayer.controls.currentItem.sourceURL;
-                        if (currentSong != selectedFileName) // next song
-                        {
-                            selectedFileName = currentSong;
-                            this.Text = "Now Playing - " + Path.GetFileNameWithoutExtension(currentSong) + " | ";
-                        }
-
-                        setProgressBar(1);
-                    }
+                    setProgressBar(1);
                 }
 
                 // notification after copied to clipboard, display "copied" then change back to number of files
@@ -1315,24 +1577,18 @@ namespace Mp3TagReader.Forms
 
         private void _btnPrev_Click(object sender, EventArgs e)
         {
-            if (windowsMediaPlayer.playState == WMPLib.WMPPlayState.wmppsStopped)
-            {
-                MessageBox.Show("Not Playing", "Warning");
-                return;
-            }
-
-            try
-            {
-                windowsMediaPlayer.controls.previous();
-                // Wait briefly then select the now-playing row in gridView
-                new System.Threading.Timer(_ => this.Invoke((Action)SelectCurrentPlayingRow), null, 350, System.Threading.Timeout.Infinite);
-            }
-            catch { }
+            SkipTrack(-1);
         }
 
         private void _btnNext_Click(object sender, EventArgs e)
         {
-            if (windowsMediaPlayer.playState == WMPLib.WMPPlayState.wmppsStopped)
+            SkipTrack(1);
+        }
+
+        // previous / next song in the play order, wrapping around at both ends
+        private void SkipTrack(int step)
+        {
+            if (player == null || currentPlaybackState == PlaybackState.Stopped || playOrder.Count == 0)
             {
                 MessageBox.Show("Not Playing", "Warning");
                 return;
@@ -1340,11 +1596,14 @@ namespace Mp3TagReader.Forms
 
             try
             {
-                windowsMediaPlayer.controls.next();
-                // Wait briefly then select the now-playing row in gridView
-                new System.Threading.Timer(_ => this.Invoke((Action)SelectCurrentPlayingRow), null, 350, System.Threading.Timeout.Infinite);
+                int count = playOrder.Count;
+                PlayAt(((orderPos + step) % count + count) % count);
+                SelectCurrentPlayingRow();
             }
-            catch { }
+            catch (Exception ex)
+            {
+                MessageBox.Show(ex.Message);
+            }
         }
 
         /// <summary>Selects the currently playing song row in the gridView.</summary>
@@ -1352,8 +1611,7 @@ namespace Mp3TagReader.Forms
         {
             try
             {
-                if (windowsMediaPlayer.currentMedia == null) return;
-                string currentSong = windowsMediaPlayer.controls.currentItem.sourceURL;
+                string currentSong = nowPlayingFile;
                 if (string.IsNullOrEmpty(currentSong)) return;
 
                 int foundIndex = -1;
@@ -1379,13 +1637,7 @@ namespace Mp3TagReader.Forms
                     if (firstVisibleCol != null)
                         gridView.CurrentCell = gridView.Rows[foundIndex].Cells[firstVisibleCol.Index];
                     gridView.FirstDisplayedScrollingRowIndex = foundIndex;
-
-                    // Update state so DisplaySelectedFileInfo won't skip ShowTags
-                    selectedRowIndex = foundIndex;
-                    selectedFileName = currentSong;
-
-                    // Reload artwork + metadata for the now-playing song
-                    ShowTags(currentSong);
+                    // the selection change above reloads the tag editor (UpdateSelectionInfo)
                 }
             }
             catch { }
@@ -1405,10 +1657,11 @@ namespace Mp3TagReader.Forms
 
         private void gridView_DragDrop(object sender, DragEventArgs e)
         {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
-            if (files[0].EndsWith("jpg") || files[0].EndsWith("png"))
+            string[] files = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (files == null || files.Length == 0) return;
+
+            if (Manipulator.IsImageFile(files[0]))
             {
-                imagePath = files[0];
                 definePicture(files[0]);
             }
             else
@@ -1420,7 +1673,10 @@ namespace Mp3TagReader.Forms
                 catch (Exception) { }
                 foreach (string file in files)
                 {
-                    listMp3Infos.Add(new Mp3Info(file, System.IO.Path.GetFileName(file), System.IO.File.GetCreationTime(file)));
+                    if (Directory.Exists(file))
+                        listMp3Infos.Add(new FolderInfo(file, System.IO.Path.GetFileName(file)));
+                    else
+                        listMp3Infos.Add(new Mp3Info(file, System.IO.Path.GetFileName(file), System.IO.File.GetCreationTime(file)));
                 }
                 gridView.DataSource = listMp3Infos;
                 _lblCount.Text = gridView.RowCount.ToString() + " files";
@@ -1431,15 +1687,9 @@ namespace Mp3TagReader.Forms
 
         private void _chkShuffle_CheckedChanged(object sender, EventArgs e)
         {
-            if (_chkShuffle.Checked == true)
-            {
-                windowsMediaPlayer.settings.setMode("shuffle", true);
-
-            }
-            else
-            {
-                windowsMediaPlayer.settings.setMode("shuffle", false);
-            }
+            // re-order the rest of the playlist; the current song keeps playing
+            if (currentPlaybackState == PlaybackState.Stopped || orderPos < 0 || orderPos >= playOrder.Count) return;
+            orderPos = BuildPlayOrder(playOrder[orderPos]);
         }
 
         private TreeNode m_OldSelectNode;
@@ -1463,6 +1713,32 @@ namespace Mp3TagReader.Forms
                     contextMenuFolder.Show(treeViewFolder, p);
                 }
             }
+        }
+
+        // selecting a folder in the tree makes it the folder for "List Files" (and the search root)
+        private void treeViewFolder_AfterSelect(object sender, TreeViewEventArgs e)
+        {
+            string path = GetPhysicalPath(e.Node);
+            try
+            {
+                path = Path.GetFullPath(path); // node paths below a drive look like "C:\\Users"
+            }
+            catch { return; }
+            if (!Directory.Exists(path)) return; // file node
+
+            if (_btnList.Enabled)
+            {
+                suppressFolderSearch = true;
+                try
+                {
+                    cbbFilePath.Text = path;
+                }
+                finally
+                {
+                    suppressFolderSearch = false;
+                }
+            }
+            updateSelectedFilePath(path);
         }
 
         private string GetPhysicalPath(TreeNode node)
@@ -1518,8 +1794,7 @@ namespace Mp3TagReader.Forms
         {
             try
             {
-                if (windowsMediaPlayer.currentMedia == null) return;
-                string currentSong = windowsMediaPlayer.controls.currentItem.sourceURL;
+                string currentSong = nowPlayingFile;
                 if (string.IsNullOrEmpty(currentSong)) return;
 
                 int foundIndex = -1;
@@ -1605,48 +1880,6 @@ namespace Mp3TagReader.Forms
             }
         }
 
-        private void button1_Click(object sender, EventArgs e)
-        {
-            TagLib.File audio;
-            ClearMp3List();
-            try
-            {
-                if (mp3Files == null || wmaFiles == null)
-                {
-                    MessageBox.Show("Please load files first", "Warning");
-                    return;
-                }
-                foreach (FileInfo fi in mp3Files)
-                {
-                    audio = TagLib.File.Create(fi.FullName, ReadStyle.None);
-                    if (audio.Tag.Album != null)
-                    {
-                        if (audio.Tag.Album.ToLower().Contains("/") || Manipulator.ArrayToString(audio.Tag.Performers, ",").ToLower().Contains("/") || Manipulator.ArrayToString(audio.Tag.Performers, ",").ToLower().Contains("/") || (audio.Tag.Title != null && audio.Tag.Title.ToLower().Contains("/")))
-                        {
-                            listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
-                        }
-                    }
-                }
-                foreach (FileInfo fi in wmaFiles)
-                {
-                    audio = TagLib.File.Create(fi.FullName, ReadStyle.None);
-                    if (audio.Tag.Album != null)
-                    {
-                        if (audio.Tag.Album.ToLower().Contains("/") || Manipulator.ArrayToString(audio.Tag.Performers, ",").ToLower().Contains("/") || Manipulator.ArrayToString(audio.Tag.Performers, ",").ToLower().Contains("/") || (audio.Tag.Title != null && audio.Tag.Title.ToLower().Contains("/")))
-                        {
-                            listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, System.IO.File.GetCreationTime(fi.FullName)));
-                        }
-                    }
-                }
-                gridView.DataSource = listMp3Infos;
-                _lblCount.Text = gridView.RowCount.ToString() + " files";
-            }
-            catch (CorruptFileException ex)
-            {
-                MessageBox.Show(ex.ToString());
-                return;
-            }
-        }
 
 
 
@@ -1665,7 +1898,8 @@ namespace Mp3TagReader.Forms
             if (e.Button == MouseButtons.Right)
             {
                 // get the row index in selected point
-                int rowIndex = gridView.HitTest(e.X, e.Y).RowIndex;
+                DataGridView.HitTestInfo hit = gridView.HitTest(e.X, e.Y);
+                int rowIndex = hit.RowIndex;
 
                 if (rowIndex == -1)
                 {
@@ -1675,6 +1909,11 @@ namespace Mp3TagReader.Forms
                 // clear other selected rows
                 gridView.ClearSelection();
 
+                // make the clicked row the current row too: the context menu actions work on CurrentRow
+                if (hit.ColumnIndex >= 0 && gridView.Columns[hit.ColumnIndex].Visible)
+                {
+                    gridView.CurrentCell = gridView.Rows[rowIndex].Cells[hit.ColumnIndex];
+                }
                 gridView.Rows[rowIndex].Selected = true;
                 Point p = new Point(e.X, e.Y);
                 contextGrid.Show(gridView, p);
@@ -1724,12 +1963,12 @@ namespace Mp3TagReader.Forms
             if (now == 1)
             {
                 // progress bar
-                double duration = windowsMediaPlayer.currentMedia.duration;
-                double position = windowsMediaPlayer.controls.currentPosition;
+                double duration = nowPlayingDuration;
+                double position = player != null ? player.Position : 0;
 
                 progressBar.Minimum = 0;
-                progressBar.Maximum = (int)duration;
-                progressBar.Value = (int)position;
+                progressBar.Maximum = Math.Max(0, (int)duration);
+                progressBar.Value = Math.Max(0, Math.Min((int)position, progressBar.Maximum));
 
                 // time playing
                 double t = Math.Floor(position);
@@ -1759,11 +1998,14 @@ namespace Mp3TagReader.Forms
 
         private void progressBar_Click(object sender, EventArgs e)
         {
+            if (player == null || currentPlaybackState == PlaybackState.Stopped) return;
+
             // set the progress bar's value based on mouse position
-            progressBar.Value = (((MouseEventArgs)e).X) * progressBar.Maximum / progressBar.Width;
+            int value = (((MouseEventArgs)e).X) * progressBar.Maximum / progressBar.Width;
+            progressBar.Value = Math.Max(progressBar.Minimum, Math.Min(value, progressBar.Maximum));
 
             // set the media's position
-            windowsMediaPlayer.controls.currentPosition = progressBar.Value;
+            player.Position = progressBar.Value;
         }
 
         private void _btnOpenFolder_Click(object sender, EventArgs e)
@@ -1787,8 +2029,17 @@ namespace Mp3TagReader.Forms
 
         private void gridView_CellBeginEdit(object sender, DataGridViewCellCancelEventArgs e)
         {
-            beforeRenamed = gridView.CurrentCell.Value.ToString();
-            renamePath = selectedFileName;
+            // only the "File Name" column can be edited, and only for the row being edited
+            object pathValue = gridView.Rows[e.RowIndex].Cells["ColumnPath"].Value;
+            object nameValue = gridView.Rows[e.RowIndex].Cells[e.ColumnIndex].Value;
+            if (gridView.Columns[e.ColumnIndex].DataPropertyName != "Name" || pathValue == null || nameValue == null ||
+                gridView.Rows[e.RowIndex].DataBoundItem is ParentFolderInfo) // ".." cannot be renamed
+            {
+                e.Cancel = true;
+                return;
+            }
+            beforeRenamed = nameValue.ToString();
+            renamePath = pathValue.ToString();
         }
 
         private void renameToolStripMenuItem_Click(object sender, EventArgs e)
@@ -1820,21 +2071,48 @@ namespace Mp3TagReader.Forms
         private void gridView_CellEndEdit(object sender, DataGridViewCellEventArgs e)
         {
             if (e.RowIndex < 0) return; // Header edit end, ignore
-            string afterRenamed = gridView.CurrentCell.Value.ToString();
-            if (afterRenamed != beforeRenamed)
-            {
-                if (MessageBox.Show("Modify file name?", "Info", MessageBoxButtons.YesNo) == DialogResult.Yes)
-                {
-                    System.IO.File.Move(renamePath, Path.Combine(Path.GetDirectoryName(renamePath), afterRenamed));
-                    gridView.ReadOnly = true;
-                    gridView.RefreshEdit();
+            DataGridViewCell cell = gridView.Rows[e.RowIndex].Cells[e.ColumnIndex];
+            string afterRenamed = cell.Value == null ? string.Empty : cell.Value.ToString().Trim();
+            gridView.ReadOnly = true;
 
-                    gridView.CurrentRow.Cells["ColumnPath"].Value = Path.Combine(Path.GetDirectoryName(renamePath), afterRenamed); // prevent file not found exception after renamed
-                }
-                else
+            if (afterRenamed == beforeRenamed) return;
+
+            if (afterRenamed.Length == 0 || afterRenamed.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
+            {
+                MessageBox.Show("Invalid file name.", "Warning");
+                cell.Value = beforeRenamed;
+                return;
+            }
+
+            if (MessageBox.Show("Modify file name?", "Info", MessageBoxButtons.YesNo) == DialogResult.Yes)
+            {
+                string newPath = Path.Combine(Path.GetDirectoryName(renamePath), afterRenamed);
+                try
                 {
-                    gridView.CurrentCell.Value = beforeRenamed;
+                    if (Directory.Exists(renamePath))
+                        Directory.Move(renamePath, newPath);
+                    else
+                        System.IO.File.Move(renamePath, newPath);
                 }
+                catch (Exception ex)
+                {
+                    MessageBox.Show("Cannot rename: " + ex.Message, "Error");
+                    cell.Value = beforeRenamed;
+                    return;
+                }
+
+                gridView.Rows[e.RowIndex].Cells["ColumnPath"].Value = newPath; // prevent file not found exception after renamed
+                if (string.Equals(selectedFileName, renamePath, StringComparison.OrdinalIgnoreCase))
+                {
+                    selectedFileName = newPath;
+                    tagsShownFor = newPath;
+                    listSelectedFiles.Remove(renamePath);
+                    if (Manipulator.IsAudioFile(newPath)) listSelectedFiles.Add(newPath);
+                }
+            }
+            else
+            {
+                cell.Value = beforeRenamed;
             }
         }
 
@@ -1856,14 +2134,13 @@ namespace Mp3TagReader.Forms
                     {
                         path = row.Cells["ColumnPath"].Value.ToString();
                         trackNo = Convert.ToInt32(Path.GetFileName(path).Substring(0, 2));
-                        if (trackNo != 0)
+                        if (trackNo > 0)
                         {
                             TagLib.File mp3 = TagLib.File.Create(path);
                             mp3.Tag.Track = Convert.ToUInt32(trackNo);
                             mp3.Save();
+                            count++; // only count files that were actually updated
                         }
-
-                        count++;
                     }
                     catch (Exception) { }
                 }
@@ -1883,7 +2160,9 @@ namespace Mp3TagReader.Forms
             {
                 if (downloadForm.ShowDialog(this) == DialogResult.OK)
                 {
+                    suppressFolderSearch = true;
                     cbbFilePath.Text = downloadForm.OutputFolder;
+                    suppressFolderSearch = false;
                     ListFiles();
                 }
             }
@@ -1925,33 +2204,40 @@ namespace Mp3TagReader.Forms
 
         private void cbbFilePath_TextChanged(object sender, EventArgs e)
         {
-            if (_btnList.Enabled == false)
+            if (_btnList.Enabled == false && !suppressFolderSearch)
             {
                 string searchString = cbbFilePath.Text;
                 ClearMp3List();
-                int count = 0;
+
+                // search inside the folder chosen in the combobox / tree, or the last listed folder
+                string searchRoot = !string.IsNullOrEmpty(selectedFilePath) ? selectedFilePath : filePath;
+                if (string.IsNullOrEmpty(searchRoot) || !Directory.Exists(searchRoot))
+                {
+                    _lblCount.Text = "Select a folder first";
+                    return;
+                }
+
                 try
                 {
-                    count = mp3Files.Length;
+                    if (searchString.Length == 0)
+                    {
+                        listAudioFiles(searchRoot);
+                        listVideoFiles(searchRoot);
+                        listFolders(searchRoot);
+                    }
+                    else
+                    {
+                        // folder search results
+                        listFolders(searchRoot, searchString);
+                        // audio search results
+                        listFiles(audioPatterns, searchRoot, searchString);
+                        // video search results
+                        listFiles(videoPatterns, searchRoot, searchString);
+                    }
                 }
-                catch
+                catch (Exception ex)
                 {
-                    count = 0;
-                }
-                if (searchString.Length == 0 && count < 2000)
-                {
-                    listAudioFiles(selectedFilePath);
-                    listVideoFiles(selectedFilePath);
-                    listFolders(selectedFilePath);
-                }
-                else
-                {
-                    // folder search results
-                    listFolders(selectedFilePath, searchString);
-                    // audio search results
-                    listFiles(audioPatterns, filePath, searchString);
-                    // video search results
-                    listFiles(videoPatterns, filePath, searchString);
+                    _lblCount.Text = "Search error: " + ex.Message;
                 }
 
                 // check to prevent null exception
@@ -1967,14 +2253,21 @@ namespace Mp3TagReader.Forms
         {
             if (binArtwork != null)
             {
-                Image image = Image.FromStream(new MemoryStream(binArtwork)).GetThumbnailImage(500, 500, null, IntPtr.Zero);
-                ArtworkViewer av = new ArtworkViewer(image);
-                av.ShowDialog();
+                Image image;
+                using (MemoryStream ms = new MemoryStream(binArtwork))
+                using (Image full = Image.FromStream(ms))
+                {
+                    image = full.GetThumbnailImage(500, 500, null, IntPtr.Zero);
+                }
+                using (ArtworkViewer av = new ArtworkViewer(image))
+                {
+                    av.ShowDialog();
+                }
+                image.Dispose();
             }
         }
 
-        private List<TagLib.File> ls = new List<TagLib.File>();
-        private String imagePath = "1";
+        private String imagePath = string.Empty;
         private Boolean unloadArtwork = false;
         private Boolean changeCoverFlag = false;
 
@@ -1982,77 +2275,88 @@ namespace Mp3TagReader.Forms
 
         private void btnChangeCover_Click(object sender, EventArgs e)
         {
-            unloadArtwork = false;
             if (openFileDialog.ShowDialog() == DialogResult.OK)
             {
-                imagePath = openFileDialog.FileName;
-
                 // define picture
-                definePicture(imagePath);
+                definePicture(openFileDialog.FileName);
             }
-            else { }
         }
 
         private void btnSaveCover_Click(object sender, EventArgs e)
         {
-            try
+            if (listSelectedFiles.Count == 0)
             {
-                if (gridView.SelectedRows.Count >= 1)
+                lblArtwork.Text = "Please select audio file(s) first";
+                return;
+            }
+
+            if (!changeCoverFlag)
+            {
+                lblArtwork.Text = "No cover to change";
+                return;
+            }
+
+            bool removeCover = unloadArtwork || string.IsNullOrEmpty(imagePath);
+            TagLib.Id3v2.AttachedPictureFrame pic = null;
+            if (!removeCover)
+            {
+                try
                 {
-                    if (changeCoverFlag == true)
+                    // define picture
+                    pic = new TagLib.Id3v2.AttachedPictureFrame();
+                    pic.TextEncoding = TagLib.StringType.Latin1;
+                    pic.MimeType = Manipulator.GetImageMimeType(imagePath);
+                    pic.Type = TagLib.PictureType.FrontCover;
+                    pic.Data = TagLib.ByteVector.FromPath(imagePath);
+                }
+                catch (Exception ex)
+                {
+                    lblArtwork.Text = "Cannot read image: " + ex.Message;
+                    return;
+                }
+            }
+
+            int saved = 0;
+            List<string> errors = new List<string>();
+            foreach (String selectedFile in listSelectedFiles)
+            {
+                try
+                {
+                    TagLib.File mp3 = TagLib.File.Create(selectedFile);
+
+                    // save or unload picture to file
+                    if (!removeCover)
                     {
-                        // define picture
-                        TagLib.Id3v2.AttachedPictureFrame pic = new TagLib.Id3v2.AttachedPictureFrame();
-                        if (!imagePath.Equals(string.Empty))
-                        {
-                            pic.TextEncoding = TagLib.StringType.Latin1;
-                            pic.MimeType = System.Net.Mime.MediaTypeNames.Image.Jpeg;
-                            pic.Type = TagLib.PictureType.FrontCover;
-                            pic.Data = TagLib.ByteVector.FromPath(imagePath);
-                        }
-
-                        foreach (String selectedFile in listSelectedFiles)
-                        {
-                            TagLib.File mp3 = TagLib.File.Create(selectedFile);
-
-                            // save or unload picture to file
-                            if (!unloadArtwork && !imagePath.Equals(string.Empty))
-                            {
-                                mp3.Tag.Pictures = new TagLib.IPicture[1] { pic };
-                            }
-                            else
-                            {
-                                mp3.Tag.Pictures = null;
-                            }
-
-                            mp3.Save();
-                            changeCoverFlag = false; // void the next Save attempt
-                        }
+                        mp3.Tag.Pictures = new TagLib.IPicture[1] { pic };
                     }
                     else
                     {
-                        lblArtwork.Text = "No cover to change";
+                        mp3.Tag.Pictures = new TagLib.IPicture[0];
                     }
-                }
 
-                if (picBxArtwork.Image != null)
-                {
-                    lblArtwork.Text = listSelectedFiles.Count + " artwork(s) set successfully";
+                    mp3.Save();
+                    saved++;
                 }
-                else
+                catch (Exception ex)
                 {
-                    binArtwork = null;
-                    lblArtwork.Text = listSelectedFiles.Count + " artwork(s) unset successfully";
+                    errors.Add(Path.GetFileName(selectedFile) + ": " + ex.Message);
                 }
             }
-            catch (Exception) { }
+            changeCoverFlag = false; // void the next Save attempt
+
+            lblArtwork.Text = saved + " artwork(s) " + (removeCover ? "unset" : "set") + " successfully";
+            if (errors.Count > 0)
+            {
+                lblArtwork.Text += ", " + errors.Count + " failed";
+                MessageBox.Show(string.Join(Environment.NewLine, errors.ToArray()), "Error");
+            }
         }
 
         private void btnUnloadCover_Click(object sender, EventArgs e)
         {
             imagePath = string.Empty;
             unloadArtwork = true;
-            picBxArtwork.Image = null;
+            SetArtworkImage(null);
             changeCoverFlag = true;
         }
 
@@ -2095,23 +2399,28 @@ namespace Mp3TagReader.Forms
         }
         private void picBxArtwork_DragDrop(object sender, DragEventArgs e)
         {
-            string[] files = (string[])e.Data.GetData(DataFormats.FileDrop);
+            string[] files = e.Data.GetData(DataFormats.FileDrop) as string[];
+            if (files == null || files.Length == 0) return;
 
             // define picture
             definePicture(files[0]);
         }
 
+        // show the new cover and remember its path; it is written to the files by btnSaveCover_Click
         private void definePicture(String filePath)
         {
-            TagLib.Id3v2.AttachedPictureFrame pic = new TagLib.Id3v2.AttachedPictureFrame();
-            pic.TextEncoding = TagLib.StringType.Latin1;
-            pic.MimeType = System.Net.Mime.MediaTypeNames.Image.Jpeg;
-            pic.Type = TagLib.PictureType.FrontCover;
-            pic.Data = TagLib.ByteVector.FromPath(filePath);
+            try
+            {
+                SetArtworkImage(System.IO.File.ReadAllBytes(filePath));
+            }
+            catch (Exception ex)
+            {
+                lblArtwork.Text = "Cannot load image: " + ex.Message;
+                return;
+            }
 
-            binArtwork = (byte[])(pic.Data.Data);
-            picBxArtwork.Image = Image.FromStream(new MemoryStream(binArtwork)).GetThumbnailImage(picBxArtwork.Height, picBxArtwork.Height, null, IntPtr.Zero);
-
+            imagePath = filePath;
+            unloadArtwork = false;
             changeCoverFlag = true;
         }
 

@@ -18,11 +18,12 @@ namespace Mp3TagReader.Helpers
     /// reference http://www.codeproject.com/Articles/31418/Implementing-a-Sortable-BindingList-Very-Very-Quic
     public class MySortableBindingList<T> : BindingList<T>
     {
-        // reference to the list provided at the time of instantiation
-        private List<T> originalList;
-
         private ListSortDirection sortDirection;
         private PropertyDescriptor sortProperty;
+        private bool isSorted;
+
+        // items matching this stay at the top in both sort directions (e.g. the ".." row)
+        public Predicate<T> KeepOnTop { get; set; }
 
         // function that refereshes the contents
         // of the base classes collection of elements
@@ -37,19 +38,16 @@ namespace Mp3TagReader.Helpers
 
         public MySortableBindingList()
         {
-            originalList = new List<T>();
         }
 
         public MySortableBindingList(IEnumerable<T> enumerable)
         {
-            originalList = enumerable.ToList();
-            populateBaseList(this, originalList);
+            populateBaseList(this, enumerable.ToList());
         }
 
         public MySortableBindingList(List<T> list)
         {
-            originalList = list;
-            populateBaseList(this, originalList);
+            populateBaseList(this, list);
         }
 
         protected override void ApplySortCore(PropertyDescriptor prop,
@@ -58,13 +56,14 @@ namespace Mp3TagReader.Helpers
             /*
              Look for an appropriate sort method in the cache if not found .
              Call CreateOrderByMethod to create one.
-             Apply it to the original list.
+             Apply it to the current items.
              Notify any bound controls that the sort has been applied.
              */
 
             sortProperty = prop;
+            sortDirection = direction;
 
-            var orderByMethodName = sortDirection ==
+            var orderByMethodName = direction ==
                 ListSortDirection.Ascending ? "OrderBy" : "OrderByDescending";
             var cacheKey = typeof(T).GUID + prop.Name + orderByMethodName;
 
@@ -73,10 +72,15 @@ namespace Mp3TagReader.Helpers
                 CreateOrderByMethod(prop, orderByMethodName, cacheKey);
             }
 
-            ResetItems(cachedOrderByExpressions[cacheKey](originalList).ToList());
+            List<T> sorted = cachedOrderByExpressions[cacheKey](this.Items.ToList()).ToList();
+            if (KeepOnTop != null)
+            {
+                List<T> top = sorted.Where(x => KeepOnTop(x)).ToList();
+                sorted = top.Concat(sorted.Where(x => !KeepOnTop(x))).ToList();
+            }
+            ResetItems(sorted);
+            isSorted = true;
             ResetBindings();
-            sortDirection = sortDirection == ListSortDirection.Ascending ?
-                            ListSortDirection.Descending : ListSortDirection.Ascending;
         }
 
         private void CreateOrderByMethod(PropertyDescriptor prop,
@@ -110,16 +114,43 @@ namespace Mp3TagReader.Helpers
 
         protected override void RemoveSortCore()
         {
-            ResetItems(originalList);
+            isSorted = false;
+            sortProperty = null;
+            ResetBindings();
+        }
+
+        protected override void ClearItems()
+        {
+            isSorted = false;
+            sortProperty = null;
+            base.ClearItems();
         }
 
         private void ResetItems(List<T> items)
         {
-            base.ClearItems();
-
-            for (int i = 0; i < items.Count; i++)
+            // refill silently; callers raise a single Reset notification afterwards
+            bool raiseEvents = RaiseListChangedEvents;
+            RaiseListChangedEvents = false;
+            try
             {
-                base.InsertItem(i, items[i]);
+                base.ClearItems();
+
+                for (int i = 0; i < items.Count; i++)
+                {
+                    base.InsertItem(i, items[i]);
+                }
+            }
+            finally
+            {
+                RaiseListChangedEvents = raiseEvents;
+            }
+        }
+
+        protected override bool IsSortedCore
+        {
+            get
+            {
+                return isSorted;
             }
         }
 
@@ -146,11 +177,6 @@ namespace Mp3TagReader.Helpers
             {
                 return sortProperty;
             }
-        }
-
-        protected override void OnListChanged(ListChangedEventArgs e)
-        {
-            originalList = base.Items.ToList();
         }
     }
 }

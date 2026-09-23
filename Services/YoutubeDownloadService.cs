@@ -40,6 +40,15 @@ namespace Mp3TagReader.Services
             webClient.DownloadFileCompleted += (sender, e) =>
             {
                 isDownloadingYtDlp = false;
+                if (e.Error != null || e.Cancelled)
+                {
+                    // don't leave a truncated yt-dlp.exe behind, it would be picked up as valid next time
+                    try
+                    {
+                        if (File.Exists(targetPath)) File.Delete(targetPath);
+                    }
+                    catch { }
+                }
                 onComplete(sender, e);
             };
             webClient.DownloadFileAsync(new Uri("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"), targetPath);
@@ -124,7 +133,19 @@ namespace Mp3TagReader.Services
                 startInfo.EnvironmentVariables["PYTHONUTF8"] = "1";
 
                 ytDlpProcess = new Process { StartInfo = startInfo };
+
+                // stderr must be drained too, otherwise yt-dlp blocks once the pipe buffer is full
+                string lastError = null;
+                ytDlpProcess.ErrorDataReceived += (sender, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data) && e.Data.Trim().Length > 0)
+                    {
+                        lastError = e.Data.Trim();
+                    }
+                };
+
                 ytDlpProcess.Start();
+                ytDlpProcess.BeginErrorReadLine();
 
                 using (StreamReader reader = ytDlpProcess.StandardOutput)
                 {
@@ -144,7 +165,7 @@ namespace Mp3TagReader.Services
                 }
                 else
                 {
-                    onComplete(false, "Download/Conversion failed.");
+                    onComplete(false, "Download/Conversion failed." + (lastError != null ? " " + lastError : ""));
                 }
             }
             catch (Exception ex)

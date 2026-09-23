@@ -58,6 +58,8 @@ namespace Mp3TagReader.Forms
 
                 // Compress, Index (Read-only representation or system queries)
                 chkCompress.Checked = (fi.Attributes & FileAttributes.Compressed) == FileAttributes.Compressed;
+                // NTFS compression can't be changed with File.SetAttributes, so it is display-only
+                chkCompress.Enabled = false;
                 chkIndex.Checked = (fi.Attributes & FileAttributes.NotContentIndexed) != FileAttributes.NotContentIndexed;
 
                 // Load Timestamps
@@ -127,19 +129,29 @@ namespace Mp3TagReader.Forms
                 if (chkArchive.Checked) attrs |= FileAttributes.Archive;
                 else attrs &= ~FileAttributes.Archive;
 
-                File.SetAttributes(targetFilePath, attrs);
+                // Content indexed (checked = indexed)
+                if (chkIndex.Checked) attrs &= ~FileAttributes.NotContentIndexed;
+                else attrs |= FileAttributes.NotContentIndexed;
 
-                // Modify timestamps if checked
+                // Modify timestamps if checked. This must happen before the attributes are applied:
+                // File.SetCreationTime opens the file for writing and fails on a read-only file.
                 if (chkModifyStamps.Checked)
                 {
                     DateTime created = dtpCreatedDate.Value.Date + dtpCreatedTime.Value.TimeOfDay;
                     DateTime modified = dtpModifiedDate.Value.Date + dtpModifiedTime.Value.TimeOfDay;
                     DateTime accessed = dtpAccessedDate.Value.Date + dtpAccessedTime.Value.TimeOfDay;
 
+                    if ((fi.Attributes & FileAttributes.ReadOnly) == FileAttributes.ReadOnly)
+                    {
+                        File.SetAttributes(targetFilePath, fi.Attributes & ~FileAttributes.ReadOnly);
+                    }
+
                     File.SetCreationTime(targetFilePath, created);
                     File.SetLastWriteTime(targetFilePath, modified);
                     File.SetLastAccessTime(targetFilePath, accessed);
                 }
+
+                File.SetAttributes(targetFilePath, attrs);
 
                 MessageBox.Show("Attributes changed successfully!", "Success", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 this.DialogResult = DialogResult.OK;

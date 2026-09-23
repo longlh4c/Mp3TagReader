@@ -129,7 +129,7 @@ namespace Mp3TagReader.Forms
                 var combined = _subtitleService.SearchSubtitles(keywordQuery, videoPath, selectedLang);
 
                 // Update UI
-                this.BeginInvoke((MethodInvoker)delegate
+                SafeBeginInvoke(delegate
                 {
                     if (combined.Count == 0)
                     {
@@ -149,7 +149,7 @@ namespace Mp3TagReader.Forms
             }
             catch (Exception ex)
             {
-                this.BeginInvoke((MethodInvoker)delegate
+                SafeBeginInvoke(delegate
                 {
                     lblStatus.Text = "Search failed: " + ex.Message;
                 });
@@ -193,7 +193,7 @@ namespace Mp3TagReader.Forms
             {
                 bool isOriginalFallback = _subtitleService.DownloadSubtitle(result, savePath);
 
-                this.BeginInvoke((MethodInvoker)delegate
+                SafeBeginInvoke(delegate
                 {
                     if (isOriginalFallback)
                     {
@@ -211,7 +211,7 @@ namespace Mp3TagReader.Forms
             }
             catch (Exception ex)
             {
-                this.BeginInvoke((MethodInvoker)delegate
+                SafeBeginInvoke(delegate
                 {
                     lblStatus.Text = "Download failed: " + ex.Message;
                 });
@@ -221,6 +221,19 @@ namespace Mp3TagReader.Forms
         private void btnCancel_Click(object sender, EventArgs e)
         {
             this.Close();
+        }
+
+        // the worker thread may finish after the form was closed: never let that crash the application
+        private void SafeBeginInvoke(MethodInvoker action)
+        {
+            try
+            {
+                if (!this.IsDisposed && this.IsHandleCreated)
+                {
+                    this.BeginInvoke(action);
+                }
+            }
+            catch (InvalidOperationException) { }
         }
 
         private void ApplyLightTheme()

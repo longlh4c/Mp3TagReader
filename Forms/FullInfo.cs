@@ -55,16 +55,16 @@ namespace Mp3TagReader.Forms
             try
             {
                 TagLib.File mp3 = TagLib.File.Create(filePath);
-                mp3.Tag.Performers = new string[] { txtArtist.Text };
+                mp3.Tag.Performers = Manipulator.StringToArray(txtArtist.Text, ',');
                 mp3.Tag.Album = txtAlbum.Text;
                 mp3.Tag.Title = txtTitle.Text;
                 mp3.Tag.Track = SafeParseUInt(txtTrack.Text);
                 mp3.Tag.Year = SafeParseUInt(txtYear.Text);
-                mp3.Tag.Genres = new string[] { txtGenre.Text };
+                mp3.Tag.Genres = Manipulator.StringToArray(txtGenre.Text, ',');
                 mp3.Tag.Lyrics = txtLyrics.Text;
                 mp3.Tag.Comment = txtComments.Text;
-                mp3.Tag.AlbumArtists = new string[] { txtAlbumArtist.Text };
-                mp3.Tag.Composers = new string[] { txtComposer.Text };
+                mp3.Tag.AlbumArtists = Manipulator.StringToArray(txtAlbumArtist.Text, ',');
+                mp3.Tag.Composers = Manipulator.StringToArray(txtComposer.Text, ',');
                 mp3.Tag.Copyright = txtCopyright.Text;
                 mp3.Tag.BeatsPerMinute = SafeParseUInt(txtBPM.Text);
                 mp3.Tag.Disc = SafeParseUInt(txtDisc.Text);

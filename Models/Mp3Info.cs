@@ -50,4 +50,15 @@ namespace Mp3TagReader.Models
             this.Name = name;
         }
     }
+
+    // the ".." row at the top of a browsed folder; Path is the parent folder
+    public class ParentFolderInfo : FolderInfo
+    {
+        public const string DisplayName = "..";
+
+        public ParentFolderInfo(string parentPath)
+            : base(parentPath, DisplayName)
+        {
+        }
+    }
 }

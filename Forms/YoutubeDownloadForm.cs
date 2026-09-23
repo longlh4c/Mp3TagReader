@@ -11,7 +11,8 @@ namespace Mp3TagReader.Forms
     {
         private string outputFolder;
         private Thread downloadThread;
-        private bool hasDownloadedSuccessfully = false;
+        private bool isBusy = false; // downloading yt-dlp.exe or a video
+        private bool hasDownloadedSuccessfully = false; // at least one download succeeded while the dialog was open
         private readonly Services.YoutubeDownloadService _youtubeDownloadService = new Services.YoutubeDownloadService();
 
         public string OutputFolder
@@ -66,6 +67,7 @@ namespace Mp3TagReader.Forms
             }
 
             // Disable controls
+            isBusy = true;
             btnDownload.Enabled = false;
             btnBrowse.Enabled = false;
             cbbBitrate.Enabled = false;
@@ -112,7 +114,7 @@ namespace Mp3TagReader.Forms
                 targetPath,
                 (s, ev) =>
                 {
-                    this.BeginInvoke((MethodInvoker)delegate
+                    SafeBeginInvoke(delegate
                     {
                         progressBar.Value = ev.ProgressPercentage;
                         lblStatus.Text = string.Format("Downloading yt-dlp.exe: {0}% ({1} KB / {2} KB)",
@@ -121,7 +123,7 @@ namespace Mp3TagReader.Forms
                 },
                 (s, ev) =>
                 {
-                    this.BeginInvoke((MethodInvoker)delegate
+                    SafeBeginInvoke(delegate
                     {
                         if (ev.Error != null)
                         {
@@ -146,7 +148,6 @@ namespace Mp3TagReader.Forms
 
         private void StartDownloadProcess()
         {
-            hasDownloadedSuccessfully = false;
             downloadThread = new Thread(() => RunYoutubeDownload());
             downloadThread.IsBackground = true;
             downloadThread.Start();
@@ -156,7 +157,7 @@ namespace Mp3TagReader.Forms
         {
             try
             {
-                this.BeginInvoke((MethodInvoker)delegate { lblStatus.Text = "Fetching video details..."; });
+                SafeBeginInvoke(delegate { lblStatus.Text = "Fetching video details..."; });
 
                 string ffmpegPath = Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Libs", "ffmpeg.exe");
                 if (!System.IO.File.Exists(ffmpegPath))
@@ -166,7 +167,7 @@ namespace Mp3TagReader.Forms
 
                 if (!System.IO.File.Exists(ffmpegPath))
                 {
-                    this.BeginInvoke((MethodInvoker)delegate
+                    SafeBeginInvoke(delegate
                     {
                         MessageBox.Show("ffmpeg.exe not found in Libs folder.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                         ResetUI();
@@ -224,7 +225,7 @@ namespace Mp3TagReader.Forms
 
                     if (!overwrite)
                     {
-                        this.BeginInvoke((MethodInvoker)delegate
+                        SafeBeginInvoke(delegate
                         {
                             lblStatus.Text = "Download cancelled (file exists).";
                             ResetUI();
@@ -241,7 +242,7 @@ namespace Mp3TagReader.Forms
                     embedMetadata,
                     (pct, status) =>
                     {
-                        this.BeginInvoke((MethodInvoker)delegate
+                        SafeBeginInvoke(delegate
                         {
                             if (pct >= 0) progressBar.Value = pct;
                             lblStatus.Text = status;
@@ -249,7 +250,7 @@ namespace Mp3TagReader.Forms
                     },
                     (success, message) =>
                     {
-                        this.BeginInvoke((MethodInvoker)delegate
+                        SafeBeginInvoke(delegate
                         {
                             if (success)
                             {
@@ -271,7 +272,7 @@ namespace Mp3TagReader.Forms
             }
             catch (Exception ex)
             {
-                this.BeginInvoke((MethodInvoker)delegate
+                SafeBeginInvoke(delegate
                 {
                     lblStatus.Text = "Error: " + ex.Message;
                     ResetUI();
@@ -279,8 +280,22 @@ namespace Mp3TagReader.Forms
             }
         }
 
+        // the worker thread / WebClient may finish after the form was closed: never let that crash the application
+        private void SafeBeginInvoke(MethodInvoker action)
+        {
+            try
+            {
+                if (!this.IsDisposed && this.IsHandleCreated)
+                {
+                    this.BeginInvoke(action);
+                }
+            }
+            catch (InvalidOperationException) { }
+        }
+
         private void ResetUI()
         {
+            isBusy = false;
             btnDownload.Enabled = true;
             btnBrowse.Enabled = true;
             cbbBitrate.Enabled = true;
@@ -293,10 +308,7 @@ namespace Mp3TagReader.Forms
 
         private void btnCancel_Click(object sender, EventArgs e)
         {
-            if (hasDownloadedSuccessfully)
-            {
-                this.DialogResult = DialogResult.OK;
-            }
+            // FormClosing asks for confirmation while busy and sets the DialogResult
             this.Close();
         }
 
@@ -307,24 +319,21 @@ namespace Mp3TagReader.Forms
 
         private void YoutubeDownloadForm_FormClosing(object sender, FormClosingEventArgs e)
         {
-            bool isActive = (btnDownload.Enabled == false && !hasDownloadedSuccessfully);
-            if (isActive)
+            if (isBusy)
             {
-                if (MessageBox.Show("Abort download?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) == DialogResult.Yes)
-                {
-                    AbortOperation();
-                }
-                else
+                if (MessageBox.Show("Abort download?", "Confirm", MessageBoxButtons.YesNo, MessageBoxIcon.Question) != DialogResult.Yes)
                 {
                     e.Cancel = true;
+                    return;
                 }
+                isBusy = false;
+                AbortOperation();
             }
-            else
+
+            // let the main form refresh if anything was downloaded, even if a later download failed
+            if (hasDownloadedSuccessfully)
             {
-                if (hasDownloadedSuccessfully)
-                {
-                    this.DialogResult = DialogResult.OK;
-                }
+                this.DialogResult = DialogResult.OK;
             }
         }
     }
