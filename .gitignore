@@ -1,3 +1,13 @@
-/bin/Debug
-/obj
-bin/Release/folderList.txt
+# Visual Studio user / cache files
+.vs/
+*.user
+*.suo
+StyleCop.Cache
+
+# build output (bin/Release is kept: it holds the ready-to-run app with its Libs)
+/bin/Debug/
+/obj/
+*.vshost.*
+
+# folder history written by the app (personal paths)
+folderList.txt
