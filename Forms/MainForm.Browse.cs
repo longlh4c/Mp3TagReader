@@ -37,16 +37,18 @@ namespace Mp3TagReader.Forms
         // folder chosen in the combobox or the tree; the search looks inside it
         private string searchRoot = string.Empty;
 
+        // "Search ON": cbbFilePath holds the search text instead of a folder
+        private bool searchMode = false;
+
         // true while the code itself changes cbbFilePath, so cbbFilePath_TextChanged won't start a search
         private bool suppressFolderSearch = false;
 
         // tree node the context menu was opened on
         private TreeNode contextNode;
 
-        // "Search ON": cbbFilePath holds the search text instead of a folder
         private bool IsSearchMode
         {
-            get { return !_btnList.Enabled; }
+            get { return searchMode; }
         }
 
         #region Folder history (cbbFilePath + folderList.txt)
@@ -145,12 +147,21 @@ namespace Mp3TagReader.Forms
 
         private void SetSearchRoot(string folder)
         {
+            if (!string.Equals(searchRoot, folder, StringComparison.OrdinalIgnoreCase))
+            {
+                InvalidateSearchIndex();
+            }
             searchRoot = folder;
+            UpdateSearchRootLabel();
         }
 
         private void cbbFilePath_SelectedIndexChanged(object sender, EventArgs e)
         {
-            SetSearchRoot(cbbFilePath.Text);
+            // the picked history entry (in search mode cbbFilePath.Text may still be the search text here)
+            if (cbbFilePath.SelectedItem != null)
+            {
+                SetSearchRoot(cbbFilePath.SelectedItem.ToString());
+            }
         }
 
         #endregion
@@ -358,6 +369,7 @@ namespace Mp3TagReader.Forms
                 switch (listContent)
                 {
                     case ListContent.SearchResults:
+                        InvalidateSearchIndex(); // files may have been added / changed
                         RunSearch();
                         if (keep != null) SelectRowByPath(keep);
                         break;
@@ -521,72 +533,7 @@ namespace Mp3TagReader.Forms
 
         #endregion
 
-        #region Search
-
-        private void _btnSearch_Click(object sender, EventArgs e)
-        {
-            cbbFilePath.Focus();
-            if (!IsSearchMode)
-            {
-                _btnList.Enabled = false;
-                _btnSearch.Text = "Search ON";
-                cbbFilePath.Text = ""; // starts the search: lists the whole folder
-            }
-            else
-            {
-                _btnList.Enabled = true;
-                _btnSearch.Text = "Search OFF";
-            }
-        }
-
-        private void cbbFilePath_TextChanged(object sender, EventArgs e)
-        {
-            if (IsSearchMode && !suppressFolderSearch)
-            {
-                RunSearch();
-            }
-        }
-
-        // Search the text of cbbFilePath in the names of the folders and audio / video files below the search root
-        // (all levels). An empty text lists every audio / video file and the subfolders.
-        private void RunSearch()
-        {
-            string searchString = cbbFilePath.Text;
-            ClearMp3List();
-            listContent = ListContent.SearchResults;
-
-            string root = !string.IsNullOrEmpty(searchRoot) ? searchRoot : currentFolder;
-            if (string.IsNullOrEmpty(root) || !Directory.Exists(root))
-            {
-                _lblCount.Text = "Select a folder first";
-                return;
-            }
-
-            try
-            {
-                if (searchString.Length == 0)
-                {
-                    addMatchingFiles(audioPatterns, root, "");
-                    addMatchingFiles(videoPatterns, root, "");
-                    addMatchingFolders(new DirectoryInfo(root), "");
-                }
-                else
-                {
-                    addMatchingFolders(new DirectoryInfo(root), searchString);
-                    addMatchingFiles(audioPatterns, root, searchString);
-                    addMatchingFiles(videoPatterns, root, searchString);
-                }
-            }
-            catch (Exception ex)
-            {
-                _lblCount.Text = "Search error: " + ex.Message;
-            }
-
-            if (listMp3Infos.Count > 0)
-            {
-                ShowList(" results");
-            }
-        }
+        #region List Files helper
 
         // files below folder (all levels) whose name contains searchString (every file when it is empty)
         private void addMatchingFiles(string[] patterns, string folder, string searchString)
@@ -600,23 +547,6 @@ namespace Mp3TagReader.Forms
                     {
                         listMp3Infos.Add(new Mp3Info(fi.FullName, fi.Name, fi.CreationTime));
                     }
-                }
-            }
-        }
-
-        // With an empty searchString: the direct subfolders. Otherwise the folders at any level whose name contains
-        // searchString (the subfolders of a match are not searched).
-        private void addMatchingFolders(DirectoryInfo dir, string searchString)
-        {
-            foreach (DirectoryInfo sub in getDirectoriesSafe(dir))
-            {
-                if (searchString.Length == 0 || sub.Name.IndexOf(searchString, StringComparison.OrdinalIgnoreCase) >= 0)
-                {
-                    listMp3Infos.Add(new FolderInfo(sub.FullName, sub.Name));
-                }
-                else
-                {
-                    addMatchingFolders(sub, searchString);
                 }
             }
         }
@@ -657,11 +587,15 @@ namespace Mp3TagReader.Forms
             string path = GetPhysicalPath(e.Node);
             if (!Directory.Exists(path)) return; // file node
 
-            if (!IsSearchMode)
+            SetSearchRoot(path);
+            if (IsSearchMode)
+            {
+                RunSearch(); // search the same text in the new folder
+            }
+            else
             {
                 SetPathTextSilently(path);
             }
-            SetSearchRoot(path);
         }
 
         private void treeViewFolder_BeforeExpand(object sender, TreeViewCancelEventArgs e)
@@ -821,6 +755,7 @@ namespace Mp3TagReader.Forms
 
             gridView.Rows[e.RowIndex].Cells["ColumnPath"].Value = newPath; // prevent file not found exception after renamed
             playlist.Rename(renamePath, newPath);
+            InvalidateSearchIndex();
             if (string.Equals(selectedFileName, renamePath, StringComparison.OrdinalIgnoreCase))
             {
                 selectedFileName = newPath;

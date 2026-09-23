@@ -28,6 +28,7 @@ namespace Mp3TagReader.Forms
             this.FormClosing += MainForm_FormClosing;
             treeViewFolder.AfterSelect += treeViewFolder_AfterSelect;
             listMp3Infos.KeepOnTop = delegate(Mp3Info item) { return item is ParentFolderInfo; };
+            InitializeSearch();
             InitializePlayer();
         }
 
