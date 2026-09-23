@@ -4,11 +4,15 @@ namespace Mp3TagReader.Services
 {
     public class TrackEndedEventArgs : EventArgs
     {
-        public TrackEndedEventArgs(bool failed, string error)
+        public TrackEndedEventArgs(string path, bool failed, string error)
         {
+            Path = path;
             Failed = failed;
             Error = error;
         }
+
+        // the file that ended; lets the receiver ignore a late event for a song it has already left
+        public string Path { get; private set; }
 
         // true when the file could not be played (it did not simply reach its end)
         public bool Failed { get; private set; }

@@ -170,8 +170,10 @@ namespace Mp3TagReader.Services
         {
             bool failed;
             string error;
+            string path;
             lock (sync)
             {
+                path = currentPath;
                 // killed on purpose (pause / stop / seek / next song): not an end of track
                 if (p != process) return;
                 process = null;
@@ -187,7 +189,7 @@ namespace Mp3TagReader.Services
             EventHandler<TrackEndedEventArgs> handler = TrackEnded;
             if (handler != null)
             {
-                handler(this, new TrackEndedEventArgs(failed, error));
+                handler(this, new TrackEndedEventArgs(path, failed, error));
             }
         }
 

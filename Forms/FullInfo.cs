@@ -15,11 +15,19 @@ namespace Mp3TagReader.Forms
             InitializeComponent();
         }
 
-        private uint SafeParseUInt(string text)
+        // true once the tags were saved, so the main window can show them
+        public bool Saved { get; private set; }
+
+        // empty text = 0; anything else must be a positive number (a typo must not silently become 0)
+        private bool TryParseNumber(TextBox box, string fieldName, out uint value)
         {
-            uint val;
-            uint.TryParse(text, out val);
-            return val;
+            value = 0;
+            string text = box.Text.Trim();
+            if (text.Length == 0 || uint.TryParse(text, out value)) return true;
+
+            MessageBox.Show(fieldName + " must be a positive number.", "Warning");
+            box.Focus();
+            return false;
         }
 
         private void FullInfo_Load(object sender, EventArgs e)
@@ -52,24 +60,33 @@ namespace Mp3TagReader.Forms
 
         private void btnSave_Click(object sender, EventArgs e)
         {
+            uint track, year, bpm, disc, discCount;
+            if (!TryParseNumber(txtTrack, "Track", out track) || !TryParseNumber(txtYear, "Year", out year) ||
+                !TryParseNumber(txtBPM, "BPM", out bpm) || !TryParseNumber(txtDisc, "Disc", out disc) ||
+                !TryParseNumber(txtDiscCount, "Disc count", out discCount))
+            {
+                return;
+            }
+
             try
             {
                 TagLib.File mp3 = TagLib.File.Create(filePath);
                 mp3.Tag.Performers = Manipulator.StringToArray(txtArtist.Text, ',');
                 mp3.Tag.Album = txtAlbum.Text;
                 mp3.Tag.Title = txtTitle.Text;
-                mp3.Tag.Track = SafeParseUInt(txtTrack.Text);
-                mp3.Tag.Year = SafeParseUInt(txtYear.Text);
+                mp3.Tag.Track = track;
+                mp3.Tag.Year = year;
                 mp3.Tag.Genres = Manipulator.StringToArray(txtGenre.Text, ',');
                 mp3.Tag.Lyrics = txtLyrics.Text;
                 mp3.Tag.Comment = txtComments.Text;
                 mp3.Tag.AlbumArtists = Manipulator.StringToArray(txtAlbumArtist.Text, ',');
                 mp3.Tag.Composers = Manipulator.StringToArray(txtComposer.Text, ',');
                 mp3.Tag.Copyright = txtCopyright.Text;
-                mp3.Tag.BeatsPerMinute = SafeParseUInt(txtBPM.Text);
-                mp3.Tag.Disc = SafeParseUInt(txtDisc.Text);
-                mp3.Tag.DiscCount = SafeParseUInt(txtDiscCount.Text);
+                mp3.Tag.BeatsPerMinute = bpm;
+                mp3.Tag.Disc = disc;
+                mp3.Tag.DiscCount = discCount;
                 mp3.Save();
+                Saved = true;
                 lblResult.Text = "Saved";
             }
             catch (Exception ex)

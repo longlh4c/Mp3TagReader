@@ -66,7 +66,6 @@ namespace Mp3TagReader.Forms
             this._btnGetLyrics = new System.Windows.Forms.Button();
             this._btnInfo = new System.Windows.Forms.Button();
             this.timerSong = new System.Windows.Forms.Timer(this.components);
-            this._btnCopy = new System.Windows.Forms.Button();
             this.timerNowPlayingText = new System.Windows.Forms.Timer(this.components);
             this._btnClearLyrics = new System.Windows.Forms.Button();
             this.openFileDialog = new System.Windows.Forms.OpenFileDialog();
@@ -80,9 +79,6 @@ namespace Mp3TagReader.Forms
             this.openFolderToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.treeViewFolder = new System.Windows.Forms.TreeView();
             this._btnDisableTimerSong = new System.Windows.Forms.Button();
-            this.btnVolumeUp = new System.Windows.Forms.Button();
-            this.btnVolumeDown = new System.Windows.Forms.Button();
-            this.btnMute = new System.Windows.Forms.Button();
             this.label1 = new System.Windows.Forms.Label();
             this.txtBitrate = new System.Windows.Forms.TextBox();
             this.contextGrid = new System.Windows.Forms.ContextMenuStrip(this.components);
@@ -94,16 +90,12 @@ namespace Mp3TagReader.Forms
             this.convertToMp3ToolStripMenuItem = new System.Windows.Forms.ToolStripMenuItem();
             this.progressBar = new System.Windows.Forms.ProgressBar();
             this.labelTimerSong = new System.Windows.Forms.Label();
-            this._btnOpenFolder = new System.Windows.Forms.Button();
             this.cbbFilePath = new System.Windows.Forms.ComboBox();
             this.picBxArtwork = new System.Windows.Forms.PictureBox();
             this.btnSetArtwork = new System.Windows.Forms.Button();
             this.btnSaveArtwork = new System.Windows.Forms.Button();
             this.btnUnsetArtwork = new System.Windows.Forms.Button();
-            this.btnOpenFolder = new System.Windows.Forms.Button();
             this.lblArtwork = new System.Windows.Forms.Label();
-            this.btnReloadList = new System.Windows.Forms.Button();
-            this.lblSelectedFilePath = new System.Windows.Forms.Label();
             this._chkAllFiles = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.gridView)).BeginInit();
             this.menuStrip1.SuspendLayout();
@@ -444,16 +436,6 @@ namespace Mp3TagReader.Forms
             this.timerSong.Interval = 1000;
             this.timerSong.Tick += new System.EventHandler(this.timerSong_Tick);
             // 
-            // _btnCopy
-            // 
-            this._btnCopy.Location = new System.Drawing.Point(550, 60);
-            this._btnCopy.Name = "_btnCopy";
-            this._btnCopy.Size = new System.Drawing.Size(62, 26);
-            this._btnCopy.TabIndex = 42;
-            this._btnCopy.Text = "Copy";
-            this._btnCopy.UseVisualStyleBackColor = true;
-            this._btnCopy.Click += new System.EventHandler(this._btnCopy_Click);
-            // 
             // timerNowPlayingText
             // 
             this.timerNowPlayingText.Enabled = true;
@@ -562,35 +544,8 @@ namespace Mp3TagReader.Forms
             this._btnDisableTimerSong.Text = "Disable Auto Find Song";
             this._btnDisableTimerSong.UseVisualStyleBackColor = true;
             this._btnDisableTimerSong.Click += new System.EventHandler(this._btnDisableTimerSong_Click);
-            // 
-            // btnVolumeUp
-            // 
-            this.btnVolumeUp.Location = new System.Drawing.Point(235, 5);
-            this.btnVolumeUp.Name = "btnVolumeUp";
-            this.btnVolumeUp.Size = new System.Drawing.Size(59, 23);
-            this.btnVolumeUp.TabIndex = 54;
-            this.btnVolumeUp.Text = "Volume +";
-            this.btnVolumeUp.UseVisualStyleBackColor = true;
 
-            // 
-            // btnVolumeDown
-            // 
-            this.btnVolumeDown.Location = new System.Drawing.Point(170, 5);
-            this.btnVolumeDown.Name = "btnVolumeDown";
-            this.btnVolumeDown.Size = new System.Drawing.Size(59, 23);
-            this.btnVolumeDown.TabIndex = 55;
-            this.btnVolumeDown.Text = "Volume -";
-            this.btnVolumeDown.UseVisualStyleBackColor = true;
 
-            // 
-            // btnMute
-            // 
-            this.btnMute.Location = new System.Drawing.Point(299, 5);
-            this.btnMute.Name = "btnMute";
-            this.btnMute.Size = new System.Drawing.Size(47, 23);
-            this.btnMute.TabIndex = 56;
-            this.btnMute.Text = "Mute";
-            this.btnMute.UseVisualStyleBackColor = true;
 
             // 
             // label1
@@ -681,16 +636,6 @@ namespace Mp3TagReader.Forms
             this.labelTimerSong.TabIndex = 60;
             this.labelTimerSong.Text = "0:00";
             // 
-            // _btnOpenFolder
-            // 
-            this._btnOpenFolder.Location = new System.Drawing.Point(550, 92);
-            this._btnOpenFolder.Name = "_btnOpenFolder";
-            this._btnOpenFolder.Size = new System.Drawing.Size(62, 39);
-            this._btnOpenFolder.TabIndex = 61;
-            this._btnOpenFolder.Text = "Open Folder";
-            this._btnOpenFolder.UseVisualStyleBackColor = true;
-            this._btnOpenFolder.Click += new System.EventHandler(this._btnOpenFolder_Click);
-            // 
             // cbbFilePath
             // 
             this.cbbFilePath.FormattingEnabled = true;
@@ -743,16 +688,6 @@ namespace Mp3TagReader.Forms
             this.btnUnsetArtwork.UseVisualStyleBackColor = true;
             this.btnUnsetArtwork.Click += new System.EventHandler(this.btnUnloadCover_Click);
             // 
-            // btnOpenFolder
-            // 
-            this.btnOpenFolder.Location = new System.Drawing.Point(550, 7);
-            this.btnOpenFolder.Name = "btnOpenFolder";
-            this.btnOpenFolder.Size = new System.Drawing.Size(96, 23);
-            this.btnOpenFolder.TabIndex = 67;
-            this.btnOpenFolder.Text = "Open Folder List";
-            this.btnOpenFolder.UseVisualStyleBackColor = true;
-            this.btnOpenFolder.Click += new System.EventHandler(this.btnOpenFolder_Click);
-            // 
             // lblArtwork
             // 
             this.lblArtwork.AutoSize = true;
@@ -760,25 +695,6 @@ namespace Mp3TagReader.Forms
             this.lblArtwork.Name = "lblArtwork";
             this.lblArtwork.Size = new System.Drawing.Size(0, 13);
             this.lblArtwork.TabIndex = 68;
-            // 
-            // btnReloadList
-            // 
-            this.btnReloadList.Location = new System.Drawing.Point(652, 7);
-            this.btnReloadList.Name = "btnReloadList";
-            this.btnReloadList.Size = new System.Drawing.Size(92, 23);
-            this.btnReloadList.TabIndex = 69;
-            this.btnReloadList.Text = "Reload List";
-            this.btnReloadList.UseVisualStyleBackColor = true;
-            this.btnReloadList.Click += new System.EventHandler(this.btnReloadList_Click);
-            // 
-            // lblSelectedFilePath
-            // 
-            this.lblSelectedFilePath.AutoSize = true;
-            this.lblSelectedFilePath.Location = new System.Drawing.Point(747, 7);
-            this.lblSelectedFilePath.Name = "lblSelectedFilePath";
-            this.lblSelectedFilePath.Size = new System.Drawing.Size(85, 13);
-            this.lblSelectedFilePath.TabIndex = 70;
-            this.lblSelectedFilePath.Text = "selectedFilePath";
             // 
             // _chkAllFiles
             // 
@@ -797,23 +713,16 @@ namespace Mp3TagReader.Forms
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(946, 530);
             this.Controls.Add(this._chkAllFiles);
-            this.Controls.Add(this.lblSelectedFilePath);
-            this.Controls.Add(this.btnReloadList);
             this.Controls.Add(this.lblArtwork);
-            this.Controls.Add(this.btnOpenFolder);
             this.Controls.Add(this.btnUnsetArtwork);
             this.Controls.Add(this.btnSaveArtwork);
             this.Controls.Add(this.btnSetArtwork);
             this.Controls.Add(this.picBxArtwork);
             this.Controls.Add(this.cbbFilePath);
-            this.Controls.Add(this._btnOpenFolder);
             this.Controls.Add(this.labelTimerSong);
             this.Controls.Add(this.progressBar);
             this.Controls.Add(this.label1);
             this.Controls.Add(this.txtBitrate);
-            this.Controls.Add(this.btnMute);
-            this.Controls.Add(this.btnVolumeDown);
-            this.Controls.Add(this.btnVolumeUp);
             this.Controls.Add(this._btnDisableTimerSong);
             this.Controls.Add(this.treeViewFolder);
 
@@ -821,7 +730,6 @@ namespace Mp3TagReader.Forms
             this.Controls.Add(this._btnPrev);
             this.Controls.Add(this._btnNext);
             this.Controls.Add(this._btnClearLyrics);
-            this.Controls.Add(this._btnCopy);
             this.Controls.Add(this._btnInfo);
             this.Controls.Add(this._btnGetLyrics);
             this.Controls.Add(this._btnPlayAll);
@@ -903,7 +811,6 @@ namespace Mp3TagReader.Forms
         private System.Windows.Forms.Button _btnGetLyrics;
         private System.Windows.Forms.Button _btnInfo;
         private System.Windows.Forms.Timer timerSong;
-        private System.Windows.Forms.Button _btnCopy;
         private System.Windows.Forms.Timer timerNowPlayingText;
         private System.Windows.Forms.Button _btnClearLyrics;
         private System.Windows.Forms.OpenFileDialog openFileDialog;
@@ -917,9 +824,6 @@ namespace Mp3TagReader.Forms
         private System.Windows.Forms.TreeView treeViewFolder;
         private System.Windows.Forms.ToolStripMenuItem openFolderToolStripMenuItem;
         private System.Windows.Forms.Button _btnDisableTimerSong;
-        private System.Windows.Forms.Button btnVolumeUp;
-        private System.Windows.Forms.Button btnVolumeDown;
-        private System.Windows.Forms.Button btnMute;
         private System.Windows.Forms.Label label1;
         private System.Windows.Forms.TextBox txtBitrate;
         private System.Windows.Forms.ContextMenuStrip contextGrid;
@@ -928,7 +832,6 @@ namespace Mp3TagReader.Forms
         private System.Windows.Forms.ToolStripMenuItem removeToolStripMenuItem;
         private System.Windows.Forms.ProgressBar progressBar;
         private System.Windows.Forms.Label labelTimerSong;
-        private System.Windows.Forms.Button _btnOpenFolder;
         private System.Windows.Forms.ToolStripMenuItem renameToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem removeAllToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem fixTrackNumberToolStripMenuItem;
@@ -937,10 +840,7 @@ namespace Mp3TagReader.Forms
         private System.Windows.Forms.Button btnSetArtwork;
         private System.Windows.Forms.Button btnSaveArtwork;
         private System.Windows.Forms.Button btnUnsetArtwork;
-        private System.Windows.Forms.Button btnOpenFolder;
         private System.Windows.Forms.Label lblArtwork;
-        private System.Windows.Forms.Button btnReloadList;
-        private System.Windows.Forms.Label lblSelectedFilePath;
         private System.Windows.Forms.CheckBox _chkAllFiles;
         private System.Windows.Forms.ToolStripMenuItem convertToMp3ToolStripMenuItem;
         private System.Windows.Forms.ToolStripMenuItem downloadMP3FromYouTubeToolStripMenuItem;
