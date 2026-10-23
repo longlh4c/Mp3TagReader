@@ -36,6 +36,7 @@ namespace Mp3TagReader.Services
             isDownloadingYtDlp = true;
             webClient = new WebClient();
             ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; // Ensure TLS 1.2
+            webClient.Headers.Add("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64)");
             webClient.DownloadProgressChanged += onProgress;
             webClient.DownloadFileCompleted += (sender, e) =>
             {
@@ -52,6 +53,127 @@ namespace Mp3TagReader.Services
                 onComplete(sender, e);
             };
             webClient.DownloadFileAsync(new Uri("https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp.exe"), targetPath);
+        }
+
+        public void UpdateYtDlp(ProgressHandler onProgress, CompletionHandler onComplete)
+        {
+            try
+            {
+                string ytDlpPath = GetYtDlpPath();
+                if (!File.Exists(ytDlpPath))
+                {
+                    if (onProgress != null) onProgress(-1, "yt-dlp.exe không tồn tại. Đang tải bản mới nhất...");
+                    DownloadDependency(
+                        ytDlpPath,
+                        (s, e) =>
+                        {
+                            if (onProgress != null)
+                            {
+                                onProgress(e.ProgressPercentage, string.Format("Downloading yt-dlp.exe: {0}% ({1} KB / {2} KB)",
+                                    e.ProgressPercentage, e.BytesReceived / 1024, e.TotalBytesToReceive / 1024));
+                            }
+                        },
+                        (s, e) =>
+                        {
+                            if (e.Error != null)
+                            {
+                                onComplete(false, "Không thể tải yt-dlp: " + e.Error.Message);
+                            }
+                            else if (e.Cancelled)
+                            {
+                                onComplete(false, "Đã hủy cập nhật.");
+                            }
+                            else
+                            {
+                                onComplete(true, "Tải yt-dlp thành công!");
+                            }
+                        }
+                    );
+                    return;
+                }
+
+                if (onProgress != null) onProgress(-1, "Đang kiểm tra và cập nhật yt-dlp (yt-dlp -U)...");
+
+                ProcessStartInfo startInfo = new ProcessStartInfo
+                {
+                    FileName = ytDlpPath,
+                    Arguments = "-U",
+                    UseShellExecute = false,
+                    CreateNoWindow = true,
+                    RedirectStandardOutput = true,
+                    RedirectStandardError = true
+                };
+
+                ytDlpProcess = new Process { StartInfo = startInfo };
+                StringBuilder output = new StringBuilder();
+
+                ytDlpProcess.OutputDataReceived += (s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        string line = e.Data.Trim();
+                        output.AppendLine(line);
+                        if (onProgress != null)
+                        {
+                            onProgress(-1, line);
+                        }
+                    }
+                };
+
+                ytDlpProcess.ErrorDataReceived += (s, e) =>
+                {
+                    if (!string.IsNullOrEmpty(e.Data))
+                    {
+                        output.AppendLine(e.Data.Trim());
+                    }
+                };
+
+                ytDlpProcess.Start();
+                ytDlpProcess.BeginOutputReadLine();
+                ytDlpProcess.BeginErrorReadLine();
+                ytDlpProcess.WaitForExit();
+
+                int exitCode = ytDlpProcess.ExitCode;
+                if (exitCode == 0)
+                {
+                    onComplete(true, "yt-dlp đã được cập nhật thành công!");
+                }
+                else
+                {
+                    // Fallback to downloading directly from GitHub releases if -U failed
+                    if (onProgress != null) onProgress(-1, "Lệnh cập nhật tự động thất bại. Đang tải trực tiếp từ GitHub...");
+                    DownloadDependency(
+                        ytDlpPath,
+                        (s, e) =>
+                        {
+                            if (onProgress != null)
+                            {
+                                onProgress(e.ProgressPercentage, string.Format("Downloading yt-dlp.exe: {0}% ({1} KB / {2} KB)",
+                                    e.ProgressPercentage, e.BytesReceived / 1024, e.TotalBytesToReceive / 1024));
+                            }
+                        },
+                        (s, e) =>
+                        {
+                            if (e.Error != null)
+                            {
+                                onComplete(false, "Cập nhật yt-dlp thất bại: " + e.Error.Message);
+                            }
+                            else if (e.Cancelled)
+                            {
+                                onComplete(false, "Đã hủy cập nhật.");
+                            }
+                            else
+                            {
+                                onComplete(true, "yt-dlp đã được tải mới thành công!");
+                            }
+                        }
+                    );
+                }
+            }
+            catch (Exception ex)
+            {
+                onComplete(false, "Lỗi khi cập nhật yt-dlp: " + ex.Message);
+            }
         }
 
         public string GetTargetFilename(string ytDlpPath, string ffmpegDir, string outputTemplate, string url)
@@ -136,11 +258,18 @@ namespace Mp3TagReader.Services
 
                 // stderr must be drained too, otherwise yt-dlp blocks once the pipe buffer is full
                 string lastError = null;
+                bool isForbidden = false;
                 ytDlpProcess.ErrorDataReceived += (sender, e) =>
                 {
                     if (!string.IsNullOrEmpty(e.Data) && e.Data.Trim().Length > 0)
                     {
-                        lastError = e.Data.Trim();
+                        string line = e.Data.Trim();
+                        lastError = line;
+                        if (line.IndexOf("403", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            line.IndexOf("Forbidden", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            isForbidden = true;
+                        }
                     }
                 };
 
@@ -152,6 +281,11 @@ namespace Mp3TagReader.Services
                     string line;
                     while ((line = reader.ReadLine()) != null)
                     {
+                        if (line.IndexOf("403", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                            line.IndexOf("Forbidden", StringComparison.OrdinalIgnoreCase) >= 0)
+                        {
+                            isForbidden = true;
+                        }
                         ParseYtDlpProgress(line, onProgress);
                     }
                 }
@@ -165,7 +299,12 @@ namespace Mp3TagReader.Services
                 }
                 else
                 {
-                    onComplete(false, "Download/Conversion failed." + (lastError != null ? " " + lastError : ""));
+                    string err = lastError ?? "";
+                    if (isForbidden && err.IndexOf("403", StringComparison.OrdinalIgnoreCase) < 0 && err.IndexOf("Forbidden", StringComparison.OrdinalIgnoreCase) < 0)
+                    {
+                        err = "HTTP Error 403: Forbidden. " + err;
+                    }
+                    onComplete(false, "Download/Conversion failed." + (!string.IsNullOrEmpty(err) ? " " + err : ""));
                 }
             }
             catch (Exception ex)

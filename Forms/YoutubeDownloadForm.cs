@@ -263,7 +263,27 @@ namespace Mp3TagReader.Forms
                             }
                             else
                             {
+                                bool isForbidden = !string.IsNullOrEmpty(message) &&
+                                    (message.IndexOf("403", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                                     message.IndexOf("Forbidden", StringComparison.OrdinalIgnoreCase) >= 0);
+
+                                if (isForbidden)
+                                {
+                                    DialogResult result = MessageBox.Show(this,
+                                        "Lỗi 403 Forbidden: Phiên bản yt-dlp hiện tại có thể đã cũ và bị YouTube chặn.\n\nBạn có muốn tự động cập nhật yt-dlp lên bản mới nhất và thử lại không?",
+                                        "Lỗi 403 Forbidden - Cần cập nhật yt-dlp",
+                                        MessageBoxButtons.YesNo,
+                                        MessageBoxIcon.Question);
+
+                                    if (result == DialogResult.Yes)
+                                    {
+                                        StartUpdateAndRetry();
+                                        return;
+                                    }
+                                }
+
                                 lblStatus.Text = message;
+                                MessageBox.Show(this, message, "Download Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
                                 ResetUI();
                             }
                         });
@@ -278,6 +298,46 @@ namespace Mp3TagReader.Forms
                     ResetUI();
                 });
             }
+        }
+
+        private void StartUpdateAndRetry()
+        {
+            lblStatus.Text = "Đang cập nhật yt-dlp lên phiên bản mới nhất...";
+            progressBar.Value = 0;
+
+            Thread updateThread = new Thread(() =>
+            {
+                _youtubeDownloadService.UpdateYtDlp(
+                    (pct, status) =>
+                    {
+                        SafeBeginInvoke(delegate
+                        {
+                            if (pct >= 0) progressBar.Value = pct;
+                            lblStatus.Text = status;
+                        });
+                    },
+                    (success, message) =>
+                    {
+                        SafeBeginInvoke(delegate
+                        {
+                            if (success)
+                            {
+                                lblStatus.Text = "Cập nhật yt-dlp thành công! Đang tự động tải lại...";
+                                progressBar.Value = 0;
+                                StartDownloadProcess();
+                            }
+                            else
+                            {
+                                MessageBox.Show(this, "Cập nhật yt-dlp thất bại:\n" + message, "Update Failed", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                                lblStatus.Text = message;
+                                ResetUI();
+                            }
+                        });
+                    }
+                );
+            });
+            updateThread.IsBackground = true;
+            updateThread.Start();
         }
 
         // the worker thread / WebClient may finish after the form was closed: never let that crash the application
